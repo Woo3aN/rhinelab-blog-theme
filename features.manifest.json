@@ -3,7 +3,7 @@
   "features": [
     {
       "id": "auth",
-      "title": "账号体系：启动身份门、登录/注册与共享会话",
+      "title": "启动身份门（本站无账号：以访客身份进入）",
       "dir": "src/features/auth",
       "entry": "src/features/auth/index.ts",
       "publicApi": ["createEntryFeature", "HANDOFF_APP_TIME"],

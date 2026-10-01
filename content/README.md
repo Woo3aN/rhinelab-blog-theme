@@ -25,7 +25,7 @@ updatedAt: "2026-09-09T10:00:00+08:00"
 draft: false
 categories: [技术]
 tags: [Astro, Markdown]
-author: Example Author
+author: Woo3aN
 cover: /blog/cover-sample.svg
 legacyUrls:
   - /?p=101

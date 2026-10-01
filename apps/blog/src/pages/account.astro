@@ -1,67 +1,17 @@
 ---
-// 账号页：登录、注册与当前登录态。
-//
-// 博客是静态站点，登录态只存在于同一个源的 __Host-lab-session Cookie 里，
-// 因此本页与 /lab/ 三维档案共享同一次登录：在这里登录后进入 /lab/ 会直接
-// 以该身份继续；在 /lab/ 登录后回到这里也会显示同一个用户名。
+// 本站不提供账号系统：三维档案入口以访客身份直接进入。
+// 保留本页是为了让既有链接与 /account/ 这个地址不出现断链。
 import BaseLayout from "../layouts/BaseLayout.astro";
 ---
 
 <BaseLayout
   title="账号"
-  description="登录或注册示例博客账号。登录态与三维档案入口共享。"
+  description="本站不提供账号系统，三维档案入口以访客身份直接进入。"
   noindex
 >
   <h1 class="page-title">账号</h1>
   <p class="account-lede">
-    登录后同一个浏览器中的<a href="/lab/">三维档案</a>会以同一身份继续，
-    收藏与阅读记录按设备保存在本地。
+    本站不提供账号系统。你可以直接以访客身份进入<a href="/lab/">三维档案</a>，
+    收藏与阅读偏好按设备保存在本地浏览器中。
   </p>
-
-  <section class="account" aria-labelledby="account-heading">
-    <h2 id="account-heading" class="visually-hidden">登录状态</h2>
-
-    <div class="account-session" data-account-session hidden>
-      <p class="account-signed-in">已登录为 <strong data-account-name></strong></p>
-      <p class="account-hint">
-        同一浏览器中的<a href="/lab/">三维档案</a>共享这次登录；退出会同时结束两边的会话。
-      </p>
-      <button type="button" class="account-button" data-account-logout>退出登录</button>
-    </div>
-
-    <form class="account-form" data-account-form novalidate>
-      <div class="account-tabs" role="tablist" aria-label="登录或注册">
-        <button type="button" role="tab" aria-selected="true" data-account-mode="login">登录</button>
-        <button type="button" role="tab" aria-selected="false" data-account-mode="register">注册</button>
-      </div>
-
-      <label class="account-field">
-        <span>用户名</span>
-        <input id="account-username" name="username" type="text" autocomplete="username"
-               autocapitalize="none" spellcheck="false" required />
-      </label>
-      <label class="account-field">
-        <span>密码</span>
-        <input id="account-password" name="password" type="password" autocomplete="current-password" required />
-        <button type="button" class="account-reveal" data-account-reveal="account-password"
-                aria-pressed="false" aria-label="显示密码" hidden>显示</button>
-      </label>
-      <label class="account-field" data-account-confirm hidden>
-        <span>确认密码</span>
-        <input id="account-confirm" name="confirm" type="password" autocomplete="new-password" />
-        <button type="button" class="account-reveal" data-account-reveal="account-confirm"
-                aria-pressed="false" aria-label="显示密码" hidden>显示</button>
-      </label>
-
-      <p class="account-rules">用户名 3–24 位，可用字母、数字与 <code>._-</code>；密码 6–128 位，至少含一个大写字母、一个小写字母和一个数字。</p>
-      <p class="account-status" role="status" aria-live="polite" data-account-status></p>
-      <button type="submit" class="account-button" data-account-submit>登录</button>
-    </form>
-
-    <noscript>
-      <p class="account-hint">
-        本页需要 JavaScript 才能登录。站点的文章阅读不依赖 JavaScript，可照常浏览。
-      </p>
-    </noscript>
-  </section>
 </BaseLayout>

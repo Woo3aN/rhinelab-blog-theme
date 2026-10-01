@@ -1,19 +1,19 @@
 import { escapeHtml } from "../../html";
 import { BootEntry } from "./panel";
-import { createAuthClient, type IdentityPort } from "../../../shared/auth/client";
 import { HANDOFF_APP_TIME } from "./intro-motion";
 import { BootIntro } from "./intro";
 import type { BootIdentity, ChosenIdentity } from "../../../shared/auth/identity";
 import type { EntryPanelPhase, IntroPhase } from "./identity";
 
 /**
- * 启动身份门与登录/注册的状态机（G4/L1a、LOGIN-IMPROVE L0–L4c）。
+ * 启动身份门的状态机（G4/L1a）。
  *
  * 边界（详见 src/features/README.md 与 docs/FEATURES.md）：
- * - 本模块拥有：序幕（BootIntro）、身份选择/登录/注册面板（BootEntry）、
- *   身份会话端口、身份门与序幕的阶段状态，以及“切换身份 / 退出登录”流程。
+ * - 本模块拥有：序幕（BootIntro）、进入面板（BootEntry）、身份门与序幕的阶段状态。
  * - 本模块不拥有：开场影片时间轴、三维场景、终端音效、舞台 inert 与
  *   阅读层。这些通过 EntryHost 端口借用，所以移除本模块不会牵动核心。
+ * - 本站不提供账号系统：面板只提供「以访客身份进入」，没有会话端口，
+ *   也没有切换身份 / 退出登录的服务端流程。
  * - 序幕必须在 start() 等待任何资源之前完成首帧遮挡（L1b），因此创建顺序
  *   由调用方决定：先 createEntryFeature()，再 await entryFeature.start()。
  */
@@ -76,7 +76,7 @@ export interface EntryFeature {
   hide(): void;
   /** 身份已确定：接管身份与标签，并让核心静默准备第一帧。 */
   adopt(identity: ChosenIdentity): void;
-  /** 启动：解析身份端口、恢复会话、挂载面板。 */
+  /** 启动：挂载进入面板并让序幕就绪。 */
   start(params: URLSearchParams): Promise<void>;
   /** 启动资源不可用时给出可读错误页（无公开文章等）。 */
   resourcesFailed(message: string): void;
@@ -112,7 +112,6 @@ export function createEntryFeature(options: {
 }): EntryFeature {
   const { host } = options;
   let entry: BootEntry | undefined;
-  let authPort: IdentityPort | undefined;
   let introPhase: IntroPhase = "connecting";
   let panelPhase: EntryPanelPhase = "login";
   let panelBusy = false;
@@ -144,14 +143,6 @@ export function createEntryFeature(options: {
   });
   applyStageVisibility();
 
-  async function resolvePort(params: URLSearchParams): Promise<IdentityPort> {
-    if (import.meta.env.DEV && params.has("entryMock")) {
-      const { createDevIdentityPort } = await import("./dev-port");
-      return createDevIdentityPort(params.get("entryMock"));
-    }
-    return createAuthClient();
-  }
-
   function adopt(identity: ChosenIdentity): void {
     currentIdentity = identity;
     currentLabel = identity.label;
@@ -180,35 +171,20 @@ export function createEntryFeature(options: {
     intro.showIdentity();
     entry.reset();
     entry.show();
-    // 刷新记忆用户：过期或被吊销的会话绝不提供一键继续。
-    void authPort?.session()
-      .then((state) => entry?.setRemembered(state.authenticated ? state.user : null))
-      .catch(() => entry?.setRemembered(null));
   }
 
+  /**
+   * 本站没有账号，因此不存在真实的登出。canLogout() 对访客恒为 false，
+   * 设置面板不会渲染这个入口；保留该方法只为满足门面契约。
+   */
   async function logout(): Promise<void> {
-    if (!authPort) return;
-    await host.closeOverlays();
-    try {
-      const state = await authPort.session();
-      if (state.authenticated) await authPort.logout(state.csrfToken);
-      host.notify("已退出登录");
-    } catch {
-      host.notify("退出未确认，请重试");
-    }
     switchIdentity();
   }
 
   async function start(params: URLSearchParams): Promise<void> {
     requestedScene = params.get("scene");
-    const port = await resolvePort(params);
-    authPort = port;
-    // 会话 Cookie 是持久 Cookie：服务端仍认得这个浏览器时提供一键继续。
-    const restored = await port.session().catch(() => null);
     entry = new BootEntry({
       mount: intro.panel,
-      port,
-      session: restored?.authenticated ? restored.user : null,
       onIdentityChosen: startBootWith,
       onEngage: () => host.engageAudio(),
       onPanelPhase: (phase, busy) => {

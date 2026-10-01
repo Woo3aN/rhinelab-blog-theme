@@ -27,7 +27,7 @@ const {
 const site = Astro.site ?? new URL("https://example.com");
 const canonicalUrl = new URL(canonical ?? Astro.url.pathname, site);
 const rssUrl = new URL("/rss.xml", site).href;
-const fullTitle = title === "示例博客" ? title : `${title} · 示例博客`;
+const fullTitle = title === "Woo3aN's Blog" ? title : `${title} · Woo3aN's Blog`;
 const ogImageUrl = ogImage ? new URL(ogImage, site).href : undefined;
 ---
 
@@ -41,9 +41,9 @@ const ogImageUrl = ogImage ? new URL(ogImage, site).href : undefined;
     <link rel="canonical" href={canonicalUrl.href} />
     {noindex && <meta name="robots" content="noindex, nofollow" />}
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="alternate" type="application/rss+xml" title="示例博客" href={rssUrl} />
+    <link rel="alternate" type="application/rss+xml" title="Woo3aN's Blog" href={rssUrl} />
     <meta property="og:type" content={ogType} />
-    <meta property="og:site_name" content="示例博客" />
+    <meta property="og:site_name" content="Woo3aN's Blog" />
     <meta property="og:locale" content="zh_CN" />
     <meta property="og:title" content={fullTitle} />
     <meta property="og:description" content={description} />
@@ -57,7 +57,7 @@ const ogImageUrl = ogImage ? new URL(ogImage, site).href : undefined;
   <body>
     <a class="skip-link" href="#main">跳到正文</a>
     <header class="site-header">
-      <a class="site-brand" href="/">示例博客</a>
+      <a class="site-brand" href="/">Woo3aN's Blog</a>
       <nav class="site-nav" aria-label="站点导航">
         <a href="/archive/">归档</a>
         <a href="/categories/">分类</a>
@@ -65,22 +65,15 @@ const ogImageUrl = ogImage ? new URL(ogImage, site).href : undefined;
         <a href="/search/">搜索</a>
         <a href="/rss.xml">RSS</a>
         <a href="/lab/">三维档案</a>
-        <!-- 账号入口：无 JS 时是普通链接；有 JS 时显示当前用户名，
-             与 /lab/ 共用同一个 __Host-lab-session Cookie。 -->
-        <a class="account-link" href="/account/" data-account-link data-account-state="signed-out">登录</a>
       </nav>
     </header>
     <main id="main">
       <slot />
     </main>
     <footer class="site-footer">
-      <p>© {new Date().getUTCFullYear()} Joyce · 由 Markdown 与 Astro 生成</p>
+      <p>© {new Date().getUTCFullYear()} Woo3aN · 由 Markdown 与 Astro 生成</p>
     <!-- 备案信息（按需填写）：若站点在中国大陆备案，可在此处放回工信部备案号与公安备案号。
          本模板默认不包含任何备案号与备案图标。 -->
     </footer>
-    <script>
-      // 账号岛：页头控件与 /account/ 表单共用一份实现。文章正文在不加载它时依然完整可读。
-      import "../scripts/account";
-    </script>
   </body>
 </html>

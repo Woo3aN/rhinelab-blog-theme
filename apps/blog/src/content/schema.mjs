@@ -71,7 +71,7 @@ const baseFields = {
   draft: z.boolean().default(false),
   categories: z.array(z.string().trim().min(1)).default([]),
   tags: z.array(z.string().trim().min(1)).default([]),
-  author: z.string().trim().min(1).default("Joyce"),
+  author: z.string().trim().min(1).default("Woo3aN"),
   cover: z.string().optional(),
   legacyUrls: z.array(legacyUrl).default([]),
 };

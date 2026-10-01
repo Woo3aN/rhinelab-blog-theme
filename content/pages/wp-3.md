@@ -6,7 +6,7 @@ path: /privacy-policy/
 publishedAt: "2026-05-13T20:14:36+08:00"
 updatedAt: "2026-05-13T20:14:36+08:00"
 draft: true
-author: Example Author
+author: Woo3aN
 legacyUrls: [/?page_id=3, /index.php?page_id=3]
 ---
 

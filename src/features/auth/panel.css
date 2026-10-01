@@ -28,6 +28,15 @@
   white-space: nowrap;
 }
 
+/* 访客进入面板的说明行：原登录/注册表单已移除，这里只留一句提示。 */
+.entry-note {
+  margin: 0 0 22px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #4a4d46;
+  text-align: center;
+}
+
 .entry-field {
   display: grid;
   /* 标题行右侧可以放"显示/隐藏密码"开关；输入框跨两列占满整行。 */
