@@ -1,9 +1,27 @@
 # RhineLab Blog Theme
 
+> **本仓库是 [Woo3aN](https://github.com/Woo3aN) 的 fork，用来部署 <https://woo3an.top>。**
+>
+> 相对上游 [JesseLee-CN/rhinelab-blog-theme](https://github.com/JesseLee-CN/rhinelab-blog-theme) 的改动：
+>
+> - **`/lab/` 去掉了登录**：身份门只保留「以访客身份进入」。本站没有账号系统，
+>   `services/lab-auth`（Go + SQLite）不部署，代码留着只为方便同步上游。
+> - **站点信息换成本站**：站名、作者默认值、页脚与 RSS。
+> - **新增 [`cf-deploy/`](cf-deploy/README.md)**：本站用 Cloudflare Worker 托管
+>   （上游是 `ops/` 里那套 SSH + nginx）。线上路径分工：`/` 博客、`/lab/` 三维档案、
+>   `/bobing` 中秋博饼、`/ws` 博饼房间 WebSocket。
+>
+> 部署、构建与本机特有的两个坑（必须 `unset NODE_OPTIONS`、不能用 `npm run build`）
+> 都写在 [`cf-deploy/README.md`](cf-deploy/README.md)。
+>
+> 上游的原始说明从下面开始。
+
+---
+
 一个可直接 fork 的个人博客模板：**Markdown 写作 + Git 发布 + 静态部署**，并保留 RhineLabUI 的 TypeScript / Three.js 三维界面作为独立的 `/lab/` 入口。
 
 - 博客由 Astro 生成静态 HTML，文章有独立规范 URL，**禁用 JavaScript 或 WebGL 仍可阅读**
-- `/lab/` 是一个三维档案终端：启动身份选择、注册/登录、档案阵列、沉浸式全文阅读
+- `/lab/` 是一个三维档案终端：启动身份门、档案阵列、沉浸式全文阅读（**本 fork 已去掉注册/登录，改为以访客身份进入**）
 - 内容、摘要、RSS、sitemap、搜索索引与三维卡片**全部由同一份 Markdown 派生**
 - 发布采用「本机构建 → 上传不可变 release → 服务器激活」，失败不替换线上、可回滚
 
