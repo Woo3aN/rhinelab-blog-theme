@@ -15,6 +15,9 @@
 > - **新增 [`cf-deploy/`](cf-deploy/README.md)**：本站用 Cloudflare Worker 托管
 >   （上游是 `ops/` 里那套 SSH + nginx）。线上路径分工：`/` 博客、`/lab/` 三维档案、
 >   `/bobing` 中秋博饼、`/ws` 博饼房间 WebSocket。
+> - **推送即上线**：`.github/workflows/deploy.yml` 监听 `main` 的 push，在 GitHub 的
+>   机器上构建后上传 Cloudflare；本地 `cf-deploy/publish.sh` 走同一条路（改完可以
+>   先在本地看效果再决定上不上线）。
 >
 > 部署、构建与本机特有的两个坑（必须 `unset NODE_OPTIONS`、不能用 `npm run build`）
 > 都写在 [`cf-deploy/README.md`](cf-deploy/README.md)；历次改动记在

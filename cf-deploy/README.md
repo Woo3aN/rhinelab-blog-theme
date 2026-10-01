@@ -26,16 +26,15 @@ bash cf-deploy/deploy.sh
 **推到 GitHub 也会自动部署**：`.github/workflows/deploy.yml` 监听 `main` 分支的
 push，在 GitHub 的机器上跑一遍构建再上传。两条路都能上线，本地那条可以先看效果。
 
-### 自动部署需要的配置（一次性）
+### 自动部署需要的配置（**已配好**）
 
-仓库 → Settings → Secrets and variables → Actions → New repository secret：
+| 项目 | 值 | 位置 |
+|---|---|---|
+| `CLOUDFLARE_API_TOKEN` | 见本机 `~/.workbuddy/secrets/cloudflare-bobing.token` | 仓库 Secret（Settings → Secrets and variables → Actions） |
+| `CLOUDFLARE_ACCOUNT_ID` | `4fbd588701e01fbe0f3a2cce7c02d7b5` | 写在 workflow 里，不是 Secret |
 
-| Name | Secret |
-|---|---|
-| `CLOUDFLARE_API_TOKEN` | 内容见本机 `~/.workbuddy/secrets/cloudflare-bobing.token` |
-
-账号 ID 已经写在 workflow 里（`4fbd588701e01fbe0f3a2cce7c02d7b5`）。
-**没配这个 Secret 之前，第一次自动跑会失败（红色叉），加上就好了。**
+**换成新仓库或 Secret 失效时才需要重配**：仓库 → Settings → Secrets and variables
+→ Actions → New repository secret，Name 填 `CLOUDFLARE_API_TOKEN`，值粘贴 Token。
 
 用的是 GitHub Actions 而不是 Cloudflare 自带的 Git 集成，因为后者需要在
 Cloudflare 后台做 GitHub OAuth 授权（只能本人操作），而 Actions 只要一个 Token。
