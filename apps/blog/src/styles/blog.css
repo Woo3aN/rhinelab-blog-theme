@@ -12,8 +12,12 @@
   --muted: rgba(8, 10, 8, 0.62);
   --font-sans: "MiSans", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
     system-ui, sans-serif;
-  --font-mono: "JetBrains Maple Mono", ui-monospace, "SFMono-Regular", "Cascadia Code", Menlo,
-    Consolas, monospace;
+  /* ⚠️ 必须带 "MiSans"：JetBrains Maple Mono 是纯拉丁子集（见
+     public/fonts/jetbrains-maple-mono-source.json 的 unicodes，不含 CJK），
+     中文只能靠 MiSans 兜底。少了它，标签/日期/元信息里的中文会掉到系统等宽字体
+     （中文 Windows 上是 NSimSun），与正文的 MiSans 明显不是一套。 */
+  --font-mono: "JetBrains Maple Mono", "MiSans", ui-monospace, "SFMono-Regular", "Cascadia Code",
+    Menlo, Consolas, monospace;
 }
 
 * {

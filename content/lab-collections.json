@@ -1,11 +1,6 @@
 {
   "themes": [
     {
-      "name": "其他",
-      "description": "不属于下面几类的内容",
-      "postIds": ["wp-000"]
-    },
-    {
       "name": "读书笔记",
       "description": "读书与摘录（对应旧博客分类「读书笔记」）",
       "postIds": ["wp-001", "wp-002", "wp-003"]
@@ -24,6 +19,11 @@
       "name": "杂感随笔",
       "description": "偶尔想记下来的东西",
       "postIds": ["wp-006"]
+    },
+    {
+      "name": "其他",
+      "description": "不属于上面几类的内容",
+      "postIds": ["wp-000"]
     }
   ]
 }

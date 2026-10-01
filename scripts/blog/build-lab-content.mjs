@@ -82,7 +82,14 @@ try {
 }
 
 const records = [];
-let displayNumber = 0;
+// 档案编号按「文章 id」的稳定顺序分配：wp-000 → X-001、wp-001 → X-002……
+// 这样新增文章只会往后追加，不会因为主题列的顺序或归类调整而整体重排。
+// （原先按遍历主题列累加，加一篇文章就会把后面所有编号顶掉。）
+const rankById = new Map(
+  [...published]
+    .sort((a, b) => Number(a.id.replace(/\D/g, "")) - Number(b.id.replace(/\D/g, "")))
+    .map((entry, index) => [entry.id, index + 1]),
+);
 if (collections) {
   collections.themes.forEach((theme, themeIndex) => {
     const assigned = theme.postIds.map((id) => byId.get(id)).filter(Boolean);
@@ -96,7 +103,7 @@ if (collections) {
     const take = Math.min(assigned.length ? SLOTS_PER_THEME : FALLBACK_SLOTS, pool.length);
     for (let slot = 0; slot < take; slot += 1) {
       const post = pool[slot];
-      displayNumber += 1;
+      const displayNumber = rankById.get(post.id);
       records.push({
         id: `X-${String(displayNumber).padStart(3, "0")}`,
         displayNumber,
