@@ -1,5 +1,9 @@
 ---
 import "../styles/blog.css";
+import { getPublishedPages } from "../lib/content";
+
+// 独立页面（关于等）自动进入导航。
+const pages = await getPublishedPages();
 
 interface Props {
   title: string;
@@ -63,7 +67,9 @@ const ogImageUrl = ogImage ? new URL(ogImage, site).href : undefined;
         <a href="/categories/">分类</a>
         <a href="/tags/">标签</a>
         <a href="/search/">搜索</a>
-        <a href="/rss.xml">RSS</a>
+        <!-- 独立页面（关于等）与归档/分类/标签/搜索同级，新增页面自动出现在这里。
+             RSS 入口先撤了：/rss.xml 仍然存在，需要时再加回来。 -->
+        {pages.map((page) => <a href={page.data.path}>{page.data.title}</a>)}
         <a href="/lab/">三维档案</a>
       </nav>
     </header>

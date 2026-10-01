@@ -5,7 +5,7 @@ description: "关于我、关于这个博客，以及这里大致会写些什么
 path: "/about/"
 publishedAt: "2026-07-15T12:00:00+08:00"
 draft: false
-categories: ["杂感随笔"]
+categories: []
 tags: ["博客/介绍", "博客/关于"]
 author: "Woo3aN"
 ---

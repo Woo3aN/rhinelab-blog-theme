@@ -1,0 +1,47 @@
+name: 部署到 Cloudflare
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      BLOG_SITE_ORIGIN: https://woo3an.top
+      CLOUDFLARE_ACCOUNT_ID: 4fbd588701e01fbe0f3a2cce7c02d7b5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      # ⚠️ 顺序要紧：.generated/ 在 .gitignore 里，新签出的仓库没有它，
+      #    而 check:features 要解析 src/blog-adapter.ts 里的 lab-content.json 引用。
+      #    所以必须先生成再校验，否则第一步就失败。
+      - run: npm run prepare:assets
+      - run: npm run check:content
+      - run: npm run check:features
+      - run: npm run build:blog
+      - run: npm run build:lab
+      - run: npm run search:index
+      - run: npm run check:site
+
+      # 博饼页是独立产物，Astro 会清空 dist/，所以构建之后再合并进来。
+      - run: mkdir -p dist/bobing && cp cf-deploy/bobing/index.html dist/bobing/index.html
+
+      - name: 部署
+        working-directory: cf-deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        # --no-bundle：worker.js 单文件无 import，跳过打包器。
+        run: npx --yes wrangler@4 deploy --no-bundle

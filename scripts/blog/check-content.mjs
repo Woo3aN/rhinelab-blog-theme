@@ -110,10 +110,11 @@ try {
   fail(`content/lab-collections.json：${error.message}`);
 }
 if (collections) {
+  // 页面（关于等）也允许被策展主题引用，这样它能在 /lab/ 里被打开。
   const publishedIds = new Set(
-    posts.filter((post) => isPublished(post.data, now)).map((post) => post.data.id),
+    all.filter((entry) => isPublished(entry.data, now)).map((entry) => entry.data.id),
   );
-  const knownIds = new Set(posts.map((post) => post.data.id));
+  const knownIds = new Set(all.map((entry) => entry.data.id));
   for (const theme of collections.themes) {
     const seen = new Set();
     for (const postId of theme.postIds) {

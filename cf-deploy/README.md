@@ -23,6 +23,23 @@ bash cf-deploy/publish.sh     # 导入新文章 → 构建 → 部署
 bash cf-deploy/deploy.sh
 ```
 
+**推到 GitHub 也会自动部署**：`.github/workflows/deploy.yml` 监听 `main` 分支的
+push，在 GitHub 的机器上跑一遍构建再上传。两条路都能上线，本地那条可以先看效果。
+
+### 自动部署需要的配置（一次性）
+
+仓库 → Settings → Secrets and variables → Actions → New repository secret：
+
+| Name | Secret |
+|---|---|
+| `CLOUDFLARE_API_TOKEN` | 内容见本机 `~/.workbuddy/secrets/cloudflare-bobing.token` |
+
+账号 ID 已经写在 workflow 里（`4fbd588701e01fbe0f3a2cce7c02d7b5`）。
+**没配这个 Secret 之前，第一次自动跑会失败（红色叉），加上就好了。**
+
+用的是 GitHub Actions 而不是 Cloudflare 自带的 Git 集成，因为后者需要在
+Cloudflare 后台做 GitHub OAuth 授权（只能本人操作），而 Actions 只要一个 Token。
+
 `publish.sh` 会先跑 `import-posts.mjs`：从写作端（默认 Obsidian 的
 `Blog/_posts`，可用 `POSTS_SRC=<目录>` 覆盖）导入没导入过的文章，自动分配 id
 （取现有最大的 `wp-<数字>` 顺延）、沿用 `/年/月/日/标题/` 网址。

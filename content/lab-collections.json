@@ -2,28 +2,28 @@
   "themes": [
     {
       "name": "读书笔记",
-      "description": "读书与摘录",
+      "description": "读书与摘录（对应旧博客分类「读书笔记」）",
       "postIds": ["wp-001", "wp-002", "wp-003"]
     },
     {
       "name": "观影笔记",
-      "description": "影视与动画感想",
+      "description": "影视与动画感想（对应旧博客分类「观后感」）",
       "postIds": ["wp-004"]
     },
     {
       "name": "技术笔记",
       "description": "课程、工具与开发记录",
-      "postIds": []
+      "postIds": ["wp-005"]
     },
     {
       "name": "杂感随笔",
       "description": "偶尔想记下来的东西",
-      "postIds": []
+      "postIds": ["wp-006"]
     },
     {
-      "name": "归档",
-      "description": "早期文章与旧站内容",
-      "postIds": []
+      "name": "其他",
+      "description": "不属于上面几类的内容",
+      "postIds": ["wp-000"]
     }
   ]
 }
