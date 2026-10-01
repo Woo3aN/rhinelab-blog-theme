@@ -7,6 +7,16 @@
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)：按日期倒序，
 条目分「新增 / 变更 / 移除 / 内容」四类。
 
+## 维护约定
+
+**每次改动网站都要同步这两个文件**，否则仓库说明会和线上实际不一致：
+
+1. 本文件加一条记录（新增 / 变更 / 移除 / 内容，哪一类改动就写哪一类）
+2. `README.md` 顶部的 fork 说明 —— 如果改动影响「本站相对上游的差异」，补进去
+
+改完再 `git commit && git push`。上线用 `bash cf-deploy/publish.sh`（或 `deploy.sh`），
+两者互不依赖，见 [`cf-deploy/README.md`](cf-deploy/README.md)。
+
 ## 2026-10-02 — 发布流程自动化
 
 写作端继续用 Hexo 格式（Obsidian 的 `Blog/_posts`），导入由脚本完成，不再手工搬。
