@@ -13,6 +13,7 @@ export interface LabSlot {
   category: string;
   date: string;
   lead: string;
+  tags: string[];
   clearance: string;
   abstract: string;
   findings: string[];

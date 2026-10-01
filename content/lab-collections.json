@@ -1,23 +1,23 @@
 {
   "themes": [
     {
-      "name": "学习",
-      "description": "课程、软件与实验记录",
-      "postIds": ["wp-55"]
+      "name": "读书笔记",
+      "description": "读书与摘录",
+      "postIds": ["wp-001", "wp-002", "wp-003"]
     },
     {
-      "name": "日常",
-      "description": "随笔与生活记录",
-      "postIds": ["wp-19", "wp-38", "wp-71"]
+      "name": "观影笔记",
+      "description": "影视与动画感想",
+      "postIds": ["wp-004"]
     },
     {
-      "name": "技术",
-      "description": "开发、工具与迁移记录",
+      "name": "技术笔记",
+      "description": "课程、工具与开发记录",
       "postIds": []
     },
     {
-      "name": "阅读",
-      "description": "书影音与摘录",
+      "name": "杂感随笔",
+      "description": "偶尔想记下来的东西",
       "postIds": []
     },
     {

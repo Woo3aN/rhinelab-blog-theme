@@ -1,8 +1,7 @@
 // 身份门面板：只保留「以访客身份进入」这一个动作。
 //
 // 本站不提供账号系统，原先的登录/注册表单、密码校验、请求重试与
-// `shared/auth/client.ts` 的网络流程都已移除。面板现在只有标题、一句说明
-// 和一个进入按钮。
+// `shared/auth/client.ts` 的网络流程都已移除。面板现在只有标题和一个进入按钮。
 //
 // 为什么保留面板而不是直接自动进入：
 //   1. 序幕交接需要一次真实的用户手势来解锁音频（宿主会调用 audio.unlock()）；
@@ -35,7 +34,6 @@ export class BootEntry {
     this.element.innerHTML = `
       <form id="entry-form" class="entry-form" novalidate aria-label="进入三维档案">
         <h1 class="entry-welcome" id="entry-title">WELCOME</h1>
-        <p class="entry-note" data-intro-row>本站无需账号，直接以访客身份进入</p>
         <button type="submit" class="entry-submit" id="entry-submit" data-intro-row>ENTER AS GUEST</button>
       </form>`;
 

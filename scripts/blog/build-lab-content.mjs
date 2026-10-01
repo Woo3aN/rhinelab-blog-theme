@@ -79,6 +79,7 @@ if (collections) {
         category: theme.name,
         date: post.publishedAt.toISOString().slice(0, 10),
         lead: post.author,
+        tags: post.tags ?? [],
         clearance: "PUBLIC",
         abstract: post.description,
         findings: [post.description],
