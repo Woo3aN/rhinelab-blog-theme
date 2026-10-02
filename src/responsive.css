@@ -195,7 +195,12 @@
   [data-layout="portrait"] .system-nav { gap: 0; }
   [data-layout="portrait"] .column-navigation { gap: 2px; }
   [data-layout="portrait"] .file-ticks button { width: 24px; }
-  [data-layout="portrait"] .terminal-modal { padding: 12px; }
+  /* 窄屏的 12px 留白保持原样，只是上方那一份移交给 sticky 的 .modal-top。
+     阅读器的窗口盒走上面那条 16/20 的留白，这里不掺和。 */
+  [data-layout="portrait"] .terminal-modal:not(.reader-sheet) { padding: 0 12px 12px; }
+  [data-layout="portrait"] .reader-sheet { padding: 12px; }
+  /* 与容器的 12px 保持一致（同步上游 cdf30aa）；阅读器工具栏不掺和。 */
+  [data-layout="portrait"] .modal-top:not(.reader-toolbar) { padding-top: 12px; }
   [data-layout="portrait"] :is(.result-header, .result-row) { grid-template-columns: minmax(0, 1fr) 68px; }
   [data-layout="portrait"] .viewer-actions button { min-width: 90px; padding-inline: 8px; }
 }

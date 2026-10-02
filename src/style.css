@@ -993,8 +993,10 @@ button {
   position: sticky;
   top: 0;
   z-index: 3;
-  /* 不透明背景盖住滚上来的内容；取值同 .terminal-modal 的底色。 */
-  background: #edeae4;
+  /* 不透明背景盖住滚上来的内容；取值同 .terminal-modal 的底色。
+     跟随主题色板（同步上游 cdf30aa）：硬编码亮色在暗色主题下会让顶栏
+     变成一块亮色补丁。 */
+  background: var(--theme-panel, #edeae4);
   padding-top: 35px;
 }
 .modal-top button {

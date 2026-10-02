@@ -17,6 +17,19 @@
 改完再 `git commit && git push`。上线用 `bash cf-deploy/publish.sh`（或 `deploy.sh`）；
 现在推到 `main` 也会自动上线，两者互不依赖，见 [`cf-deploy/README.md`](cf-deploy/README.md)。
 
+## 2026-10-03
+
+### 修复
+
+- **弹窗顶栏的 sticky 背景跟随主题色板**：上一日的 sticky 修复把顶栏背景硬编码为
+  亮色 `#edeae4`，暗色主题下它会是一块亮色补丁。上游 RhineLabUI 在合并我们的顶栏
+  PR（[#11](https://github.com/LBEILC/RhineLabUI/pull/11)，已合并）之后一分钟内
+  跟进打磨（`cdf30aa`），改为 `var(--theme-panel, #edeae4)` —— 本站同样具备亮暗
+  主题与该变量，直接同步。
+- **窄屏（≤370px）弹窗内边距补齐**：sticky 修复的窄屏部分（容器 12px 保持原样、
+  顶栏 `padding-top` 与容器统一为 12px）此前只进了提交给上游的 PR 分支，没有进
+  本仓库的 main，一并补上；阅读器的窗口盒与工具栏照旧不掺和。
+
 ## 2026-10-02
 
 这一天做了两件事：把档案与内容理顺（编号、分类、研究记录，并补两篇文章），以及按真机
