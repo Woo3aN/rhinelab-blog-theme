@@ -32,7 +32,7 @@
       "hostPort": "ReaderHost",
       "facade": "ReaderFeature",
       "eager": false,
-      "reason": "阅读层连同 HTML 解析栈与样式表按需加载，三维入口首屏不为它付费（IR 计划 §5.3.2、§11.3）。",
+      "reason": "阅读层连同 HTML 解析栈与样式表按需加载，三维入口首屏不为它付费（IR 计划 §5.3.2、§11.3）；进入档案详情后空闲时预取（ReaderFeature.prefetch），点「阅读全文」不必现等 200 多 KB 下载。",
       "styles": ["reader.css", "markdown.css"],
       "styleEntry": "src/features/reader/styles.ts",
       "checks": ["test:reader", "test:reader-e2e", "check:reader", "check:reader-content", "build:reader-fixtures"],

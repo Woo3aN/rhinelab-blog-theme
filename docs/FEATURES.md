@@ -66,10 +66,11 @@
   - `index.ts` 唯一入口 + 门面（懒加载、请求令牌、守卫、焦点恢复、pagehide、HMR 清理）
   - `reader.ts` 阅读层生命周期；`loader.ts` 内容加载；`toc.ts` 目录导航
   - `reader.css` / `markdown.css` 样式；`styles.ts` 样式懒加载入口
-- **加载方式**：按需 `import()`。阅读层连同 HTML 解析栈与样式表都不进三维入口首屏。
+- **加载方式**：按需 `import()`。阅读层连同 HTML 解析栈与样式表都不进三维入口首屏；
+  进入档案详情后由 `prefetch` 在空闲时提前取回，点入口不必现等下载。
 - **宿主端口** `ReaderHost`：`currentTarget`、`isArchiveReady`、`isIdentityGateActive`、
   `currentMode`、`notify`、`playSound`、`setSceneInputSuspended`。
-- **门面** `ReaderFeature`：`isActive`、`ownsEvent`、`open`、`closeIfActive`、
+- **门面** `ReaderFeature`：`isActive`、`ownsEvent`、`open`、`prefetch`、`closeIfActive`、
   `closeForContextChange`、`withClosed`、`release`、`snapshot`、`dispose`。
 - **共享库**：`shared/reading/`（契约、几何、内容白名单、URL 策略、指纹、滚动存储、srcset、
   prose 样式）。博客构建与阅读层共用，因此放在 `shared/` 而不是功能目录里。

@@ -1010,14 +1010,26 @@ button {
 .terminal-modal .modal-top button:focus-visible {
   outline-offset: -2px;
 }
-/* 触摸设备上干脆不画这个方框：焦点环紧贴面板右边界，任何偏移都可能被容器裁掉
-   一角（Safari 对负 outline-offset 的处理与 Chrome 不同，实测仍会出界），
-   而触摸用户本来也不需要键盘焦点提示。键盘用户（桌面）保留上面的焦点环。
-   两个条件取并集：coarse 覆盖手机，hover: none 覆盖带触控板但无鼠标的设备
-   （本项目判断触摸设备用的就是 (pointer: coarse)，见 src/viewport-layout.ts）。 */
+/* 触摸设备上不画键盘焦点环。
+   这里的焦点常常是程序化产生的：收起阅读器会把焦点还给入口按钮、打开弹窗会
+   自动聚焦到关闭按钮，Safari 会把这判定成 :focus-visible —— 用户没碰键盘也
+   凭空看到一个方框。而这些控件又都紧贴容器边缘（弹窗右上的 CLOSE ×、详情
+   面板右下角的「阅读全文」），焦点环越出后被 `overflow` 裁掉一角，看起来就
+   像一个坏掉的框。触摸用户本来也不需要键盘焦点提示，直接不画。
+   键盘用户（桌面）保留焦点环，见上面的 button/input 与各控件自己的规则。
+   条件取 (pointer: coarse) 与 (hover: none) 的并集：coarse 覆盖手机，
+   hover: none 覆盖带触控但无指针的设备（本项目判断触摸设备用的就是
+   (pointer: coarse)，见 src/viewport-layout.ts）。
+   加 !important 的原因：阅读层的样式表按需加载、插在本文件之后，其中
+   `.article-reader .reader-close:focus-visible` 这类规则优先级更高。 */
 @media (pointer: coarse), (hover: none) {
-  .terminal-modal .modal-top button:focus-visible {
-    outline: none;
+  button:focus-visible,
+  a:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  summary:focus-visible,
+  [tabindex]:focus-visible {
+    outline: none !important;
   }
 }
 .modal-top button > span {
@@ -1852,9 +1864,10 @@ button {
 .export-button:hover {
   color: #947444;
 }
+/* 「阅读全文」同样贴在详情面板右边界，7px 的 offset 会越出容器；向内画。 */
 .export-button:focus-visible {
   outline: 2px solid #a67d48;
-  outline-offset: 7px;
+  outline-offset: -2px;
 }
 
 [data-mode="boot"][data-boot="array"] .three-scene {

@@ -25,6 +25,7 @@ interface ReaderFeature {
   isActive(): boolean;
   ownsEvent(event: Event): boolean;      // 事件是否属于阅读层表面
   open(link: HTMLAnchorElement): Promise<void>;
+  prefetch(): void;                      // 详情面板出现后空闲预取分包
   closeIfActive(): void;
   closeForContextChange(): Promise<void>;
   withClosed<T>(action: () => T | Promise<T>): Promise<T>;
@@ -55,6 +56,22 @@ interface ImmersiveReader {
 ```
 
 阅读模块按需 `import()`，因此 **parse5 与阅读层 CSS 都不进入 `/lab/` 的初始包**。
+进入档案详情后由 `prefetch()` 在空闲时提前取回（失败静默），正式打开仍是同一条
+`import()` 路径。
+
+## 失败与降级
+
+`import()` 的是带内容哈希的独立分包，页面停留期间站点若重新部署过，旧分包会 404；
+弱网下也可能整包加载失败。此时 `open()` 会把原因写进提示条与 `console.warn`，
+并**真的导航到独立文章页**（`location.assign`）—— 入口链接的默认跳转早在点击时
+就被 `preventDefault` 掉了，不发这一步就什么都没发生。ES 模块的加载失败会被
+module map 记住，重试同一个 URL 只会立刻失败，所以这里不做重试。
+
+| 情形 | 表现 |
+| --- | --- |
+| 分包加载失败 | 提示原因（页面版本已更新 / 网络异常）并跳转独立文章页 |
+| 阅读层自身拒绝打开（已释放、正在收起、`showModal` 失败） | 提示「无法打开沉浸式阅读，请重试」，**不**跳转 |
+| 文章内容取不到或超时 | 阅读器内部转为「不支持沉浸显示」，保留独立文章页入口与诊断 |
 
 ## 2. 页面契约
 

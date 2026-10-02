@@ -54,6 +54,8 @@ export interface ReaderFeature {
   ownsEvent(event: Event): boolean;
   /** 从详情里的链接打开：非用户原意或状态已变时保持原生跳转。 */
   open(link: HTMLAnchorElement): Promise<void>;
+  /** 详情面板出现后调用：空闲时预取阅读层分包，让点击不等下载。 */
+  prefetch(): void;
   /** 上下文切换：静默关闭，不把焦点还给入口链接。 */
   closeIfActive(): void;
   /** 上下文切换的等待版（登出等需要确认关闭完成）。 */
@@ -90,15 +92,19 @@ export function createReaderFeature(host: ReaderHost): ReaderFeature {
     return { postId: record.postId, href, title: record.title };
   };
 
+  /** 阅读层按需加载的三块资源；预取与正式打开共用同一条路径。 */
+  const loadModules = () =>
+    Promise.all([
+      import("./reader"),
+      import("./loader"),
+      // 样式表与阅读层同批加载：首屏不为阅读层付费，弹框出现时样式必已就位。
+      import("./styles"),
+    ]);
+
   async function ensure(): Promise<ImmersiveReader> {
     if (reader) return reader;
     modulePending ??= (async () => {
-      const [mod, content, styles] = await Promise.all([
-        import("./reader"),
-        import("./loader"),
-        // 样式表与阅读层同批加载：首屏不为阅读层付费，弹框出现时样式必已就位。
-        import("./styles"),
-      ]);
+      const [mod, content, styles] = await loadModules();
       void styles;
       const installed = mod.installArticleReader({
         origin: location.origin,
@@ -127,6 +133,33 @@ export function createReaderFeature(host: ReaderHost): ReaderFeature {
     return modulePending;
   }
 
+  /**
+   * 详情面板出现后提前把阅读层的分包拉到本地缓存。
+   * 这不是首屏开销（详情是用户主动进入的），却能让「阅读全文」不再等 200 多 KB
+   * 下载完才打开 —— 点击时资源大多已经就位，弱网下也少一次失败的机会。
+   * 失败静默：正式打开时会重新走一次 ensure()，届时再按真实结果处理。
+   */
+  function prefetch(): void {
+    if (reader || modulePending) return;
+    const start = () => void loadModules().catch(() => {});
+    // Safari 长期不支持 requestIdleCallback，退化成短延时；两条路都放在后台，
+    // 不阻塞详情面板的渲染与动画。
+    const idle = (window as Window & { requestIdleCallback?: (cb: () => void, options?: { timeout: number }) => number })
+      .requestIdleCallback;
+    if (typeof idle === "function") idle(start, { timeout: 2500 });
+    else setTimeout(start, 600);
+  }
+
+  /**
+   * 模块加载失败的提示文案。浏览器原文（`Failed to fetch dynamically imported
+   * module` 之类）没有可读性，只保留两类对用户有意义的原因。
+   */
+  function describeModuleFailure(error: unknown): string {
+    const message = error instanceof Error ? error.message : String(error);
+    const stale = /dynamically imported module|Importing a module script failed|MIME type|404/i;
+    return stale.test(message) ? "页面版本已更新" : "网络异常";
+  }
+
   async function open(link: HTMLAnchorElement): Promise<void> {
     const reject = (why: string) => {
       decline = why;
@@ -143,9 +176,19 @@ export function createReaderFeature(host: ReaderHost): ReaderFeature {
     let instance: ImmersiveReader;
     try {
       instance = await ensure();
-    } catch {
+    } catch (error) {
       if (token === pending.token) pending.link = null;
-      host.notify("全文阅读模块加载失败，已打开独立文章页");
+      // 阅读层是带内容哈希的独立分包（reader / loader / styles 三个 chunk）。
+      // 页面停留期间站点若重新部署过，旧分包就是 404；弱网下也可能整包加载失败。
+      // ES 模块的加载失败会被 module map 记住 —— 同一个 URL 再 import 只会立刻
+      // 失败，重试没有意义，所以这里直接走文案所说的兜底。
+      console.warn("[reader] 全文阅读模块加载失败", target.href, error);
+      host.notify(`全文阅读模块加载失败（${describeModuleFailure(error)}），已打开独立文章页`);
+      // 提示必须与行为一致：真正导航过去。上游只发了提示，而入口链接的默认
+      // 跳转早已被 preventDefault 掉，结果是「既不打开阅读器、也不跳转」。
+      // 用 location.assign 而不是 window.open —— 后者在 await 之后会被
+      // Safari 当作弹窗拦掉，同源导航不受这个限制。
+      location.assign(target.href);
       return reject("import-failed");
     }
     // await 之后重新确认归属：用户可能已离开详情、选中项可能已变、
@@ -162,7 +205,9 @@ export function createReaderFeature(host: ReaderHost): ReaderFeature {
     const opened = instance.open(current, link);
     if (!opened) {
       lastFocus = null;
-      host.notify("无法打开沉浸式阅读，已打开独立文章页");
+      // 这里只可能是阅读层自身状态异常（已释放 / 正在收起 / showModal 失败），
+      // 不是「内容取不到」，所以不要谎报已经跳转到独立文章页。
+      host.notify("无法打开沉浸式阅读，请重试");
       return reject(`open-returned-false:${instance.state}`);
     }
     decline = "opened";
@@ -217,5 +262,5 @@ export function createReaderFeature(host: ReaderHost): ReaderFeature {
   // 页面隐藏与 bfcache 恢复都由本模块自理：核心不需要知道阅读层的锁。
   window.addEventListener("pagehide", release);
 
-  return { isActive, ownsEvent, open, closeIfActive, closeForContextChange, withClosed, release, snapshot, dispose };
+  return { isActive, ownsEvent, open, prefetch, closeIfActive, closeForContextChange, withClosed, release, snapshot, dispose };
 }

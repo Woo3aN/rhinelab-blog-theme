@@ -472,6 +472,9 @@ function setMode(next: Mode) {
   if (next === "detail" && previousMode !== "detail") {
     renderDetail();
     pendingDetailFocus = true;
+    // 用户已经在读概述，趁空闲把阅读层的分包取回来：等他们点「阅读全文」时
+    // 那 200 多 KB 已经就位，不必当场下载（弱网下最容易失败的就是这一步）。
+    readerFeature.prefetch();
   }
 }
 function select(index: number, navigation?: ArchiveNavigation) {
