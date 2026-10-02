@@ -40,6 +40,27 @@ function supportsOggVorbis(): boolean {
   return probe.canPlayType('audio/ogg; codecs="vorbis"') !== "";
 }
 /**
+ * iOS 会因为「当前不是用户手势」「音频会话被系统收走」等原因拒绝启动音频设备，
+ * 报 `NotAllowedError: Failed to start the audio device`。这类失败换一次真实
+ * 手势重试就有机会成功，不该被当成「这个站没有声音」。
+ */
+function isRetryableAudioFailure(error: unknown): boolean {
+  const raw = error instanceof Error ? error.message : String(error ?? "");
+  return /start the audio device|not allowed|NotAllowedError|interrupted/i.test(raw);
+}
+/**
+ * 把音频失败翻译成人话。原始文案（`NotAllowedError: Failed to start the audio
+ * device` 之类）用户看不出发生了什么，更不知道该做什么。
+ */
+function describeAudioError(error: unknown): string {
+  const raw = error instanceof Error ? error.message : String(error ?? "");
+  if (!raw) return "未知原因";
+  if (isRetryableAudioFailure(error)) return "浏览器拒绝了这次播放，点一下即可重试";
+  if (/decode|EncodingError/i.test(raw)) return "浏览器无法解码音乐文件（格式不受支持或文件不完整）";
+  if (/abort|timed? ?out/i.test(raw)) return "音乐下载超时，请检查网络后重试";
+  return raw;
+}
+/**
  * 等待音频设备 resume/suspend 的上限（毫秒）。
  * iOS Safari 在音频被系统打断后，这两个 Promise 可能永远不 resolve ——
  * 不加限制会把整条激活链卡死，之后再也听不到音乐，而且没有任何报错。
@@ -354,6 +375,12 @@ export class TerminalAudio {
   private disposed = false;
   private bootTime: number | null = null;
   private error = "";
+  /**
+   * 这次失败是不是「再点一次可能就好」。
+   * iOS 拒绝启动音频设备（`Failed to start the audio device`）属于这一类：
+   * 设备是系统随时可能收走又还回来的，重试有意义，不该断言「无法播放」。
+   */
+  private errorRetryable = false;
   private requestId = 0;
   private suspension: Promise<void> = Promise.resolve();
   private bootMix = -1;
@@ -377,6 +404,9 @@ export class TerminalAudio {
     if (this.entryPending) return;
     this.unlocked = true;
     this.gestureNotified = false;
+    // 这是一次全新的尝试，旧错误不再代表当下。
+    this.error = "";
+    this.errorRetryable = false;
     void this.activate();
   };
   holdForEntry() {
@@ -390,6 +420,10 @@ export class TerminalAudio {
   }
   async unlock() {
     this.unlocked = true;
+    this.gestureNotified = false;
+    // 每次解锁都是一次重新尝试：先前的失败（尤其 iOS 的设备启动被拒）不该一直挂着。
+    this.error = "";
+    this.errorRetryable = false;
     await this.activate();
     // 首次进入（以及每次从后台回来）都在这里兜一次底：音乐没响就说清原因，
     // 而不是让用户以为「这个站没有声音」。
@@ -402,7 +436,9 @@ export class TerminalAudio {
     if (this.musicData) return Promise.resolve(this.musicData);
     this.fetching ??= Promise.all(this.stemFiles.map(async ({ name, file }) => {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 15000);
+      // 30 秒：手机弱网下这几 MB 音频常常要十几秒，15 秒会误判成失败，
+      // 而失败一次就足以让用户以为「这个站没有声音」。
+      const timeout = setTimeout(() => controller.abort(), 30000);
       try {
         const response = await fetch(assetUrl(`audio/${file}`), { signal: controller.signal });
         if (!response.ok) throw new Error(`Music ${name}: ${response.status}`);
@@ -429,8 +465,14 @@ export class TerminalAudio {
     this.requestId++;
     this.stopMusic();
     this.stopEffects();
-    this.suspension =
-      this.context?.suspend().catch(() => {}) ?? Promise.resolve();
+    // 只需要「别在挂起完成前 resume」，而不是「必须等它完成」：iOS 上
+    // `suspend()` 的 Promise 可能永远不 resolve，不加这个上限，之后每一次
+    // 激活都要先干等一轮超时。
+    const suspended = this.context?.suspend().catch(() => {}) ?? Promise.resolve();
+    this.suspension = Promise.race([
+      suspended,
+      new Promise<void>((done) => { setTimeout(done, RESUME_TIMEOUT_MS); }),
+    ]);
   };
   private visibility = () => {
     this.bootTime = null;
@@ -449,13 +491,14 @@ export class TerminalAudio {
   private reportIfSilent() {
     if (this.gestureNotified || this.disposed || document.hidden) return;
     if (!this.prefs.music || this.tracks.length) return;
-    if (this.error) {
+    if (this.error && !this.errorRetryable) {
       // 数据没加载/解码成功：提示「点一下屏幕」也没用，把原因说出来。
       this.gestureNotified = true;
       this.onSilent?.("error", this.error);
       return;
     }
-    if (this.context?.state === "running") return;
+    if (this.context?.state === "running" && !this.error) return;
+    // 其余情况（含 iOS 拒绝启动设备）都是「再碰一下屏幕就有机会」。
     this.gestureNotified = true;
     this.onSilent?.("gesture", "");
   }
@@ -523,7 +566,11 @@ export class TerminalAudio {
       return;
     const id = ++this.requestId;
     try {
-      const c = this.context ?? this.createContext();
+      // iOS 会在系统收走音频会话之后把 AudioContext 变成 closed，那个实例再也
+      // 起不来（resume 只会抛 `Failed to start the audio device`）。设备一旦
+      // 失效就重建：AudioBuffer 可以跨 context 复用，丢掉的只有播放位置。
+      let c = this.context ?? this.createContext();
+      if (c.state === "closed") c = this.rebuildContext();
       // Call resume before awaiting network or an earlier suspension so the
       // browser observes this call in the user's activation handler.
       const resume = c.state === "running" ? Promise.resolve() : c.resume();
@@ -541,13 +588,27 @@ export class TerminalAudio {
         if (id === this.requestId) this.startMusic();
       }
     } catch (e) {
-      this.error = e instanceof Error ? e.message : "Audio unavailable";
+      this.error = describeAudioError(e);
+      this.errorRetryable = isRetryableAudioFailure(e);
+      console.warn("[audio] 激活失败：", e);
     }
+  }
+  /** 丢掉失效的音频设备，重建一套增益节点。 */
+  private rebuildContext(): AudioContext {
+    const dead = this.context;
+    this.tracks = [];
+    this.voices = [];
+    this.suspension = Promise.resolve();
+    try {
+      void dead?.close();
+    } catch {
+      /* 已经关掉了 */
+    }
+    return this.createContext();
   }
   private loadMusic(c: AudioContext) {
     if (this.buffers) return Promise.resolve();
-    this.loading ??= this.prepareMusic()
-      .then(data => Promise.all(data.map(bytes => c.decodeAudioData(bytes.slice(0)))))
+    this.loading ??= this.decodeMusic(c)
       .then((buffers) => {
         this.buffers = buffers;
         this.error = "";
@@ -556,6 +617,34 @@ export class TerminalAudio {
         this.loading = undefined;
       });
     return this.loading;
+  }
+  /**
+   * 解码背景音乐，失败时退回 mp3 单轨再试一次。
+   *
+   * 只看 `canPlayType('audio/ogg; codecs="vorbis"')` 是不够的：它只回答「这个容器
+   * 名字认不认识」，Safari 在若干版本上会给出 `maybe` 却在真正 `decodeAudioData`
+   * 时抛 EncodingError。那样用户只会看到一句「背景音乐无法播放」，而我方无从判断
+   * 到底是格式不支持还是文件坏了。这里以**真实解码结果**为准 —— 顺带也覆盖了
+   * 分段文件损坏、下载被截断等情况。
+   */
+  private async decodeMusic(c: AudioContext): Promise<AudioBuffer[]> {
+    const fallbackOnly = this.stemFiles.length === 1;
+    try {
+      return await this.decodeTracks(c);
+    } catch (error) {
+      if (fallbackOnly) throw error;
+      console.warn("[audio] Ogg 分轨解码失败，退回 mp3 单轨", error);
+      // 换单轨：清掉分轨的下载与解码缓存，按新清单重新取一次。
+      this.stems = [{ name: FALLBACK_STEM, file: `${FALLBACK_STEM}.mp3` }];
+      this.musicData = undefined;
+      this.fetching = undefined;
+      return this.decodeTracks(c);
+    }
+  }
+  private async decodeTracks(c: AudioContext) {
+    const data = await this.prepareMusic();
+    // 每段都传副本：`decodeAudioData` 会接管（detach）传入的 ArrayBuffer。
+    return Promise.all(data.map((bytes) => c.decodeAudioData(bytes.slice(0))));
   }
   private startMusic() {
     const c = this.context;
@@ -640,7 +729,11 @@ export class TerminalAudio {
    * 一个总音量——取最响的那一轨，保持各场景之间的相对响度。
    */
   private sceneLevels(table: readonly number[]): number[] {
-    return this.stemGains.length === 1 ? [Math.max(...table)] : [...table];
+    // 单轨时（旧 Safari 解不了 Ogg，或运行期从 Ogg 退回 mp3）没有声部可配比，
+    // 取表里最大的一档整轨放开。判断看实际轨数，而不是建 context 时的节点数 ——
+    // 退回 mp3 发生在 stemGains 建好之后。
+    const single = (this.buffers?.length ?? this.stemGains.length) === 1;
+    return single ? [Math.max(...table)] : [...table];
   }
   play(type: Sound = "tick", pan = 0) {
     const c = this.context;
@@ -715,6 +808,7 @@ export class TerminalAudio {
       loaded: !!this.buffers,
       playedKeys: this.playedKeys,
       error: this.error,
+      retryable: this.errorRetryable,
       preferences: { ...this.prefs },
     };
   }

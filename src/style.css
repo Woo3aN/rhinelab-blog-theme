@@ -1318,6 +1318,21 @@ button {
 .audio-settings { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
 /* 音频起不来时把原因摆出来（旧版 iOS 解不了 Ogg Vorbis 是最常见的一种）。 */
 .audio-error { margin: 14px 0 0; font-size: 12px; line-height: 1.7; color: #9b7247; }
+/* 音乐该响却没响时给一条能点的恢复入口：iOS 只认真实的用户手势，光提示
+   「点一下屏幕」既含糊又容易被忽略。 */
+.audio-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 14px 0 0;
+  padding: 12px 16px;
+  background: #e8e3d8;
+  border-left: 2px solid #a67d48;
+}
+.audio-status p { margin: 0; font-size: 12px; line-height: 1.6; color: #6a6559; }
+.audio-status button { font-size: 11px; letter-spacing: .8px; display: flex; align-items: center; gap: 8px; min-height: 32px; white-space: nowrap; }
+.audio-status button:hover { color: #9b7247; }
 .settings-list .audio-toggle { padding: 20px 0 12px; border-bottom: 0; }
 .settings-list .audio-toggle span { margin-top: 7px; }
 .settings-list .audio-volume { justify-content: flex-start; gap: 12px; padding: 8px 0 18px; }

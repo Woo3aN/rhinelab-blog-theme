@@ -198,7 +198,19 @@ function readLocal<T>(key: string, fallback: T): T {
   }
 }
 const saved = new Set<string>(readLocal<string[]>("example-saved", []));
-const storedPrefs = readLocal<Partial<{ sound: boolean; music: boolean; soundVolume: number; musicVolume: number; reduced: boolean; quality: boolean; rendering: RenderQuality; colorTheme: ThemePreference; motion: StoredMotion; motionPreset: MotionPreset }>>("rhine-settings", {});
+const storedPrefs = readLocal<Partial<{ v: number; sound: boolean; music: boolean; soundVolume: number; musicVolume: number; reduced: boolean; quality: boolean; rendering: RenderQuality; colorTheme: ThemePreference; motion: StoredMotion; motionPreset: MotionPreset }>>("rhine-settings", {});
+/**
+ * 存档版本号。旧存档（没有 `v`）里的 `music` 有可能是被 bug 写进去的：
+ * 那一版读设置时把音乐开关接到了 `storedPrefs.sound` 上，于是「关掉音效」会顺手
+ * 把音乐也关掉并永久存下来 —— 用户之后怎么翻设置都是静音，重开浏览器也一样，
+ * 而且因为音乐开关是「关」，连提示都不会出现。
+ *
+ * 症状很好认：`music === false` 且 `sound === false`（两者必然同生同灭）。
+ * 只重置这一个键，其余设置照旧；打上版本号后这个迁移不会再执行。
+ */
+const PREF_STORE_VERSION = 2;
+const legacyMusicMutedByBug =
+  storedPrefs.v !== PREF_STORE_VERSION && storedPrefs.music === false && storedPrefs.sound === false;
 // 上游细粒度动效：旧的单一 reduced 设置会被迁移为逐键偏好。
 const initialMotion = createMotionPreferences(
   storedPrefs.motion,
@@ -208,14 +220,15 @@ const initialMotion = createMotionPreferences(
 );
 const prefs = {
   sound: true,
-  // 音乐开关读回自己的键。上游这里读的是 storedPrefs.sound，只有在存档里
-  // 缺 music 键时才会露出成“音效关掉 → 音乐也跟着关”，但那是错的。
-  music: storedPrefs.music ?? true,
   soundVolume: .55,
   musicVolume: .5,
   reduced: matchMedia("(prefers-reduced-motion: reduce)").matches,
   quality: true,
   ...storedPrefs,
+  // 音乐开关读回自己的键，并且必须放在 `...storedPrefs` 之后 —— 否则展开又会把
+  // 上面算好的值覆盖掉。上游这里读的是 `storedPrefs.sound`（见 legacyMusicMutedByBug）。
+  music: legacyMusicMutedByBug ? true : storedPrefs.music ?? true,
+  v: PREF_STORE_VERSION,
   // 触屏设备首次访问从「性能」起步：SSAO（32 次采样）与景深在手机上很贵，
   // 拖动阵列时最容易掉帧。桌面仍从「原始」起步。用户动过画质设置后以存档为准。
   rendering: normalizeQuality(
@@ -607,7 +620,10 @@ function toggleSaved() {
 function renderDetail() {
   tabTransition.cancel();
   const r = records[selected];
-  $("#object-id").textContent = "NO." + String(selected + 1).padStart(3, "0");
+  // 这里的编号要和档案编号（X-001…）一致：两者都用按文章 id 排序的稳定序号
+  // （`displayNumber`），不是数组下标 —— 下标会随列的增删变化，用户看到的是
+  // 「NO.007 对应 X-001」这种对不上的编号。
+  $("#object-id").textContent = "NO." + String(r.displayNumber).padStart(3, "0");
   $("#detail-content").innerHTML = `
   <div class="detail-kicker"><span>FILE ${r.id}</span><span>${escapeHtml(r.clearance)}</span></div>
   <h2>${escapeHtml(r.en)}</h2><div class="detail-title-cn">${escapeHtml(r.title)}<span>${escapeHtml(r.category)}</span></div>
@@ -616,7 +632,7 @@ function renderDetail() {
   <div class="detail-tabs" role="tablist"><button id="tab-overview" class="active" role="tab" aria-controls="tab-panel" aria-selected="true" data-tab="overview">01 <span>概述</span></button><button id="tab-notes" role="tab" aria-controls="tab-panel" aria-selected="false" data-tab="notes">02 <span>研究记录</span></button><button id="tab-history" role="tab" aria-controls="tab-panel" aria-selected="false" data-tab="history">03 <span>访问日志</span></button><i class="tab-indicator" aria-hidden="true"></i></div>
   <div id="tab-panel" class="tab-panel" role="tabpanel">${overview()}</div>
   <div class="detail-actions"><button class="solid-button" data-action="bookmark">${saved.has(r.postId) ? "− REMOVE FROM SAVED" : "＋ SAVE ARTICLE"}<span>${saved.has(r.postId) ? "已收藏" : "收藏文章"}</span></button><a class="export-button" data-action="read-immersive" href="${escapeHtml(r.href)}" aria-label="阅读 ${escapeHtml(r.title)} 全文">阅读全文 <span>→</span></a></div>
-  <div class="detail-footnote"><a class="article-link" href="${escapeHtml(r.href)}">文章链接 ↗</a><span>${String(selected + 1).padStart(3, "0")} / ${String(records.length).padStart(3, "0")}</span></div>`;
+  <div class="detail-footnote"><a class="article-link" href="${escapeHtml(r.href)}">文章链接 ↗</a><span>${String(r.displayNumber).padStart(3, "0")} / ${String(records.length).padStart(3, "0")}</span></div>`;
   $("#detail-content").setAttribute("tabindex", "-1");
   $('[data-action="bookmark"]').setAttribute("aria-pressed", String(saved.has(r.postId)));
   documentDecryption.reset($("#detail-content"), !motionActive("documentReveal") || scene.decryptionFrame.phase === "clear");
@@ -768,13 +784,25 @@ function motionPreferenceNoteMarkup() {
   return `<div id="motion-preference-note" class="motion-preference-note"><p>${motionSummary(prefs.motion)}</p><span>预设：${preset === "full" ? "完整动画" : preset === "reduced" ? "减少动画" : "自定义"} · 选择会保存在本站</span>${allEnabled ? "" : '<button data-action="enable-motion">启用完整动画并重播 ↻</button>'}</div>`;
 }
 /**
- * 音频起不来时把原因说出来。最常见的一种是 iOS 16 及更早的 Safari 解不了
- * Ogg Vorbis —— 背景音乐是三段 .ogg，那种系统上会静默无声，用户看不到原因。
+ * 音频状态。三种情况分开说：
+ * - 数据层面真的坏了（解码失败、文件缺失、下载超时）：把原因摆出来；
+ * - 「再点一次可能就好」的失败（iOS 拒绝启动音频设备）：给一个能点的按钮 ——
+ *   比让用户去猜「点一下屏幕」可靠得多；
+ * - 正常播放、或用户自己关了音乐：不打扰。
  */
 function audioStatusMarkup() {
-  const { error } = audio.stats();
-  if (!error) return "";
-  return `<p class="audio-error">BACKGROUND MUSIC 无法播放：${escapeHtml(error)}</p>`;
+  const { error, retryable, state, loaded, preferences } = audio.stats();
+  if (!preferences.music) return "";
+  if (error && !retryable) return `<p class="audio-error">BACKGROUND MUSIC 无法播放：${escapeHtml(error)}</p>`;
+  if (!error && state === "running" && loaded) return "";
+  const hint = error
+    ? escapeHtml(error)
+    : state === "running"
+      ? "音乐数据仍在加载，稍等片刻"
+      : document.hidden
+        ? "页面切到后台时不会播放，回到前台会接着放"
+        : "浏览器需要一个点击才允许播放（iOS 尤其如此）";
+  return `<div class="audio-status"><p>BACKGROUND MUSIC 待播放：${hint}</p><button data-action="resume-audio">恢复播放 <span>▶</span></button></div>`;
 }
 function settingsMarkup() {
   return `<h2>SYSTEM SETTINGS<small>终端偏好设置</small></h2><p class="settings-intro">${entryFeature.summaryMarkup()} <span>·</span> 收藏按本设备保存</p><div class="settings-list">${themeSettingsMarkup(prefs.colorTheme)}${audioSettingsMarkup(prefs)}</div>${audioStatusMarkup()}${motionPreferenceNoteMarkup()}${motionSettingsMarkup(prefs.motion, prefs.motionPreset)}${qualityMarkup(prefs.rendering)}${pwaSettingsMarkup()}<div class="settings-shortcuts"><span>KEYBOARD CONTROLS</span><p><kbd>←</kbd><kbd>→</kbd> 切列 <kbd>↑</kbd><kbd>↓</kbd> 选档 <kbd>ENTER</kbd> 读取 <kbd>/</kbd> 检索 <kbd>ESC</kbd> 返回</p></div><div class="settings-bottom">${document.fullscreenEnabled ? '<button data-action="fullscreen">FULLSCREEN <span>↗</span></button>' : ''}<button data-action="switch-identity">切换身份 <span>⇄</span></button>${entryFeature.canLogout() ? '<button data-action="logout">退出登录 <span>⏻</span></button>' : ''}<button data-action="restart">REINITIALIZE SYSTEM <span>↻</span></button></div><div class="modal-bottom"><span>ANALYSIS OS / 1.0 · 字体 MiSans（小米，允许免费商用与网页嵌入）与 JetBrains Maple Mono（OFL-1.1） · <a href="${assetUrl("fonts/MiSans-license.pdf")}" target="_blank" rel="noopener">许可 A</a> / <a href="${assetUrl("fonts/JetBrains-Maple-Mono-OFL.txt")}" target="_blank" rel="noopener">许可 B</a></span><span>POWERED BY RHINE LAB</span></div>`;
@@ -956,10 +984,18 @@ document.addEventListener("click", (e) => {
   }
   if (action === "search" || action === "saved" || action === "settings") {
     el.focus({ preventScroll: true });
+    // 打开设置面板本身就是一次真实手势。iOS 从后台回来（或重开浏览器）后音频
+    // 需要新手势才能恢复，在点击的同步栈里补一次解锁，用户只要点开设置就会响，
+    // 不必去猜「点一下屏幕」是什么意思。
+    if (action === "settings") void audio.unlock();
     openModal(action);
   }
   if (action === "close-modal") closeModal();
   if (action === "bookmark") toggleSaved();
+  if (action === "resume-audio") {
+    // 这次点击就是 iOS 要的那个手势；恢复完把面板状态刷新一遍。
+    void audio.unlock().then(() => renderModal());
+  }
   if (action === "reset-search") {
     modal = "search";
     searchQuery = "";
