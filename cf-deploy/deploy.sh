@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# 重建并部署 woo3an.top（博客 + /lab/ 三维档案 + /bobing 博饼）
+# 重建并部署 woo3an.top（博客 + /lab/ 三维档案）
+# /bobing 博饼不在这里：它归独立 Worker bobing-game（仓库 Woo3aN/bobing）。
 #
 # 用法：bash cf-deploy/deploy.sh
 # 前置：

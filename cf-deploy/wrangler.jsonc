@@ -1,24 +1,26 @@
 {
-  // woo3an.top 的线上 Worker：博客 + 三维档案 + 博饼，同一个 Worker 托管。
+  // woo3an.top 的线上 Worker：博客 + 三维档案，纯静态站。
+  //
+  // ⚠️ Worker 名字 = 部署单元 ID。2026-10-02 之前本仓库与游戏仓库
+  //    （Woo3aN/bobing）都叫 `bobing`，谁后部署谁把对方整个覆盖掉
+  //    ——游戏一上线，博客就没了。现在按服务拆开：
+  //      rhinelab-blog（本仓库）  woo3an.top/*              博客 + /lab/
+  //      bobing-game（游戏仓库）  woo3an.top/bobing*、/ws    博饼 + 房间服务
+  //    Cloudflare 按路由特异性分发，`/bobing*` 比 `/*` 更具体，游戏那两条路径的
+  //    请求不会落到本站。改名只改这里的 name，改路由只改 routes。
+  //
   // 部署：见 cf-deploy/README.md（本机必须用 wrangler deploy --no-bundle）。
-  "name": "bobing",
+  "name": "rhinelab-blog",
   "main": "worker.js",
   "compatibility_date": "2026-09-01",
   "assets": {
     "directory": "../dist",
     "binding": "ASSETS",
-    // /ws 与 /bobing 必须先过 Worker：Assets 里没有这两个路径对应的文件，
-    // 不写的话静态资源优先会直接 404。其余路径（含 / 与 /lab/）交给 Assets。
-    "run_worker_first": ["/ws", "/bobing", "/bobing/*"],
+    // 没有 run_worker_first：纯静态站，所有请求直接命中 Assets
+    // （/bobing 与 /ws 归 bobing-game，请求根本不会到本站）。
     // dist/404.html 是主题设计过的 404 页（Astro 的 [...path] 路由生成，
     // check:site 也校验过）。默认值 "none" 会返回空 404，白白浪费这一页。
     "not_found_handling": "404-page"
   },
-  "durable_objects": {
-    "bindings": [{ "name": "ROOMS", "class_name": "RoomDO" }]
-  },
-  "migrations": [
-    { "tag": "v1", "new_sqlite_classes": ["RoomDO"] }
-  ],
   "routes": [{ "pattern": "woo3an.top/*", "zone_name": "woo3an.top" }]
 }

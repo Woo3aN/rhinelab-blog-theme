@@ -25,8 +25,10 @@
 >   见 [`CHANGELOG.md`](CHANGELOG.md) 的映射表。「关于」是独立页面，不挂分类。
 > - **导航去掉 RSS**：`/rss.xml` 仍然生成，只是不放入口。
 > - **新增 [`cf-deploy/`](cf-deploy/README.md)**：本站用 Cloudflare Worker 托管
->   （上游是 `ops/` 里那套 SSH + nginx）。线上路径分工：`/` 博客、`/lab/` 三维档案、
->   `/bobing` 中秋博饼、`/ws` 博饼房间 WebSocket。
+>   （上游是 `ops/` 里那套 SSH + nginx），线上 Worker 名 `rhinelab-blog`，
+>   路径分工：`/` 博客、`/lab/` 三维档案。
+>   中秋博饼（`/bobing`）与房间服务（`/ws`）不在本站，归独立 Worker `bobing-game`
+>   （仓库 Woo3aN/bobing）——两个 Worker 按路径分工，各部署各的。
 > - **推送即上线**：`.github/workflows/deploy.yml` 监听 `main` 的 push，在 GitHub 的
 >   机器上构建后上传 Cloudflare；本地 `cf-deploy/publish.sh` 走同一条路（改完可以
 >   先在本地看效果再决定上不上线）。

@@ -36,9 +36,6 @@ jobs:
       - run: npm run search:index
       - run: npm run check:site
 
-      # 博饼页是独立产物，Astro 会清空 dist/，所以构建之后再合并进来。
-      - run: mkdir -p dist/bobing && cp cf-deploy/bobing/index.html dist/bobing/index.html
-
       - name: 部署
         working-directory: cf-deploy
         env:

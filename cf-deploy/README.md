@@ -1,13 +1,28 @@
 # cf-deploy —— woo3an.top 的 Cloudflare Worker 部署
 
-同一个 Worker（线上名字叫 `bobing`）托管三块内容：
+线上 Worker 名字叫 `rhinelab-blog`，托管两块内容（都是静态产物）：
 
 | 路径 | 内容 | 来源 |
 | --- | --- | --- |
 | `/` | 博客（Astro 静态站） | `npm run build:blog` → `dist/` |
 | `/lab/` | 三维档案终端（Three.js） | `npm run build:lab` → `dist/lab/` |
-| `/bobing` | 中秋博饼小游戏 | `cf-deploy/bobing/index.html` |
-| `/ws` | 博饼房间 WebSocket | `worker.js` 里的 `RoomDO` |
+
+## 部署边界（2026-10-02 拆分）
+
+`woo3an.top` 一个域名两个 Worker，**按路径分工、各自独立仓库、各自独立部署**：
+
+| Worker 名 | 路由 | 仓库 | 内容 |
+| --- | --- | --- | --- |
+| `rhinelab-blog` | `woo3an.top/*` | 本仓库（`cf-deploy/`） | 博客 + `/lab/` |
+| `bobing-game` | `woo3an.top/bobing*`、`woo3an.top/ws` | Woo3aN/bobing（`cf/`） | 博饼游戏 + 房间服务 |
+
+⚠️ **两个仓库的 Worker 名字必须不同。** 名字就是部署单元 ID，同名部署 =
+后部署的把先部署的整个覆盖掉 —— 2026-10-02 之前两边都叫 `bobing`，游戏一上线
+博客就整个没了（根路径 520）。房间服务（`RoomDO`）也只留在游戏那边：两个 Worker
+的 Durable Object 存储是分开的，两边都实现会让同一个房间号出现两份房间数据。
+
+改路由请改仓库里的 `wrangler.jsonc`，不要只改 Cloudflare 控制台 —— 下次部署
+会以配置文件为准，控制台的手工改动会被冲掉。
 
 ## 部署
 
