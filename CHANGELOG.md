@@ -64,8 +64,29 @@
   与旧博客的对应关系见下节映射表。
 - **「关于」不再挂分类**：它在新旧两站都只是独立页面（id 仍为 `wp-000`）。
 - **导航去掉 RSS 入口**：`/rss.xml` 仍然生成，只是不放入口。
+- **线上 Worker 改名 `rhinelab-blog`，博饼拆分到独立 Worker**：此前本仓库与游戏仓库
+  （[Woo3aN/bobing](https://github.com/Woo3aN/bobing)）用**同一个 Worker 名 `bobing`**
+  部署，谁后部署谁把对方整个覆盖掉——游戏一上线，博客就没了（根路径 520）。
+  现在一个域名两个 Worker、按路径分工、各自独立部署：
+
+  | Worker | 路由 | 仓库 | 内容 |
+  | --- | --- | --- | --- |
+  | `rhinelab-blog` | `woo3an.top/*` | 本仓库 `cf-deploy/` | `/` 博客、`/lab/` 三维档案 |
+  | `bobing-game` | `woo3an.top/bobing*`、`woo3an.top/ws*` | Woo3aN/bobing `cf/` | 博饼页、房间服务 |
+
+  Cloudflare 按路由特异性分发，`/bobing*` 比 `/*` 更具体，游戏那两条路径的请求
+  不会落到本站。
 - **文档同步**：`docs/READER.md`（页面契约、失败与降级）、`docs/FEATURES.md`（门面方法）、
   `content/README.md`（`findings` 字段与「研究记录怎么写」）、`README.md` 与本文件。
+
+### 移除
+
+- 博饼相关全部迁到游戏仓库，本仓库不再有第二份：`cf-deploy/bobing/index.html`、
+  `worker.js` 里的 `/ws` 与 `/bobing` 分支及 `RoomDO` 房间服务、
+  `wrangler.jsonc` 的 Durable Object 绑定与 `migrations`、
+  `deploy.sh` 与 `deploy.yml` 里合并博饼页的步骤。
+  房间服务只留一份是有意的：两个 Worker 的 Durable Object 存储互相隔离，
+  两边都实现会让同一个房间号出现两份互不相干的房间数据。
 
 ### 内容
 
@@ -185,6 +206,13 @@
 - **音频类的验证要在线上做**：本机 Chrome 对 `localhost` 的 `fetch` 会返回 204 / 0 字节
   （`curl` 对同一 URL 却是 200 + 完整字节），`decodeAudioData` 必然失败——那是环境问题，
   不是代码问题。
+- **两个仓库的 Worker 名字不能重名**：Worker 名就是部署单元的 ID，同名部署 =
+  后部署的把先部署的整个覆盖掉（2026-10-02 之前两边都叫 `bobing`，游戏一上线
+  博客就整个没了）。改路由请改仓库里的 `wrangler.jsonc`，不要只改 Cloudflare
+  控制台——下次部署以配置为准，控制台的手工改动会被冲掉。
+- **route pattern 必须带 `*`（游戏那边的教训）**：pattern 匹配的是完整 URL，
+  写死 `woo3an.top/ws` 只匹配不带 query 的 `/ws`，而游戏连的是 `/ws?code=1234`，
+  会漏回本站的 `woo3an.top/*` 拿到 404 页，且这个 404 会被边缘缓存住。
 
 ## 2026-10-01 — 站点上线
 

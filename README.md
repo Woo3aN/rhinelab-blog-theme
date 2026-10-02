@@ -2,40 +2,22 @@
 
 > **本仓库是 [Woo3aN](https://github.com/Woo3aN) 的 fork，用来部署 <https://woo3an.top>。**
 >
-> 相对上游 [JesseLee-CN/rhinelab-blog-theme](https://github.com/JesseLee-CN/rhinelab-blog-theme) 的改动：
+> 相对上游 [JesseLee-CN/rhinelab-blog-theme](https://github.com/JesseLee-CN/rhinelab-blog-theme) 的改动（逐条理由见 [`CHANGELOG.md`](CHANGELOG.md)）：
 >
-> - **`/lab/` 去掉了登录**：身份门只保留「以访客身份进入」，顶栏加了「← 主站」回博客。
->   本站没有账号系统，`services/lab-auth`（Go + SQLite）不部署，代码留着只为方便同步上游。
-> - **独立页面也能沉浸阅读**：上游的阅读契约只放行文章（`data-reader-kind="post"`，
->   且校验脚本禁止页面带标记）。本站放行 `page`，所以「关于」在 `/lab/` 里也能打开。
->   见 [`docs/READER.md`](docs/READER.md) 与 [`CHANGELOG.md`](CHANGELOG.md)。
-> - **阅读层更耐断言**：进档案详情后空闲时预取阅读层分包，点「阅读全文」不必现等下载；
->   分包加载失败时会真的跳到独立文章页（上游只发提示，而入口链接的默认跳转早已被
->   `preventDefault` 掉）；触摸设备上不画键盘焦点方框 —— 那里的焦点常是程序化产生的，
->   且焦点环贴边会被容器裁掉一角。
-> - **档案编号前后统一**：`/lab/` 里详情面板、脚注与三维卡片上的 `NO.xxx` 都取档案编号
->   （`X-00N`）的稳定序号、从 001 起，不再是数组下标（上游会出现 NO.007 对 X-001）。
-> - **音频更能扛 iOS 的限制**：iOS 拒绝启动音频设备（`NotAllowedError: Failed to start
->   the audio device`）时按「可重试」处理 —— 提示可点、设置面板给出引擎状态，打开设置
->   面板本身就顺势解锁一次；`AudioContext` 失效时重建；解码失败自动退回 mp3 单轨。
-> - **内容换成本站**：原博客的 4 篇文章与「关于」页（保留原网址），另加 2 篇新写的，
->   主题自带示例内容已删除。
-> - **站名与分类换成本站**：站名、作者默认值、页脚；分类用四字标题
->   （读书笔记 / 观影笔记 / 技术笔记 / 杂感随笔），具体归类对照旧博客，
->   见 [`CHANGELOG.md`](CHANGELOG.md) 的映射表。「关于」是独立页面，不挂分类。
-> - **导航去掉 RSS**：`/rss.xml` 仍然生成，只是不放入口。
-> - **新增 [`cf-deploy/`](cf-deploy/README.md)**：本站用 Cloudflare Worker 托管
->   （上游是 `ops/` 里那套 SSH + nginx），线上 Worker 名 `rhinelab-blog`，
->   路径分工：`/` 博客、`/lab/` 三维档案。
->   中秋博饼（`/bobing`）与房间服务（`/ws`）不在本站，归独立 Worker `bobing-game`
->   （仓库 Woo3aN/bobing）——两个 Worker 按路径分工，各部署各的。
-> - **推送即上线**：`.github/workflows/deploy.yml` 监听 `main` 的 push，在 GitHub 的
->   机器上构建后上传 Cloudflare；本地 `cf-deploy/publish.sh` 走同一条路（改完可以
->   先在本地看效果再决定上不上线）。
+> - **部署换成 Cloudflare Worker**：上游是 `ops/` 里那套 SSH + nginx，本站改走
+>   [`cf-deploy/`](cf-deploy/README.md)，push 到 `main` 即上线。线上 Worker 名
+>   `rhinelab-blog`，管 `/` 博客与 `/lab/` 三维档案。
+> - **`/bobing` 博饼与 `/ws` 房间服务不在这边**：归独立 Worker `bobing-game`
+>   （仓库 [Woo3aN/bobing](https://github.com/Woo3aN/bobing)）。一个域名两个 Worker
+>   按路径分工、各自部署，互不覆盖。
+> - **`/lab/` 去掉登录**：只保留「以访客身份进入」，`services/lab-auth`（Go + SQLite）
+>   不部署，代码留着只为方便同步上游。
+> - **`/lab/` 的几处修复**：独立页面（「关于」）也能沉浸阅读、档案 `NO.xxx` 统一取
+>   编号 `X-00N` 的稳定序号、音频扛住 iOS 的设备限制、触摸设备不画键盘焦点框。
+> - **内容、站名、分类换成本站**：分类用四字标题；`/rss.xml` 照常生成，只是不放入口。
 >
-> 部署、构建与本机特有的两个坑（必须 `unset NODE_OPTIONS`、不能用 `npm run build`）
-> 都写在 [`cf-deploy/README.md`](cf-deploy/README.md)；历次改动记在
-> [`CHANGELOG.md`](CHANGELOG.md)。
+> 部署与构建、本机特有的两个坑（必须 `unset NODE_OPTIONS`、不能用 `npm run build`）
+> 都写在 [`cf-deploy/README.md`](cf-deploy/README.md)。
 >
 > 上游的原始说明从下面开始。
 

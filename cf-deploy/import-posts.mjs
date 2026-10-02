@@ -17,7 +17,8 @@ const require = createRequire(new URL("../", import.meta.url));
 const { load: parseYaml } = require("js-yaml");
 
 const ROOT = resolve(new URL("../", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1"));
-const SRC = process.env.POSTS_SRC || "C:/Users/Administrator/Nutstore/1/我的坚果云/Blog/_posts";
+// 写作端目录不写死（公开仓库不该带本机路径）：由 POSTS_SRC 传入。
+const SRC = process.env.POSTS_SRC || "";
 const POSTS_DIR = resolve(ROOT, "content/posts");
 const PAGES_DIR = resolve(ROOT, "content/pages");
 const SKIP = new Set(["hello-world.md"]);
@@ -78,6 +79,10 @@ for (const dir of [POSTS_DIR, PAGES_DIR]) {
   }
 }
 
+if (!SRC) {
+  console.error("用 POSTS_SRC=<写作端目录> 指定要导入的目录，例如：\n  POSTS_SRC=~/Blog/_posts npm run import:posts");
+  process.exit(1);
+}
 if (!existsSync(SRC)) {
   console.error(`写作端目录不存在：${SRC}\n用 POSTS_SRC=<目录> 指定。`);
   process.exit(1);
