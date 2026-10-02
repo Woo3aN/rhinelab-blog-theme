@@ -17,6 +17,39 @@
 改完再 `git commit && git push`。上线用 `bash cf-deploy/publish.sh`（或 `deploy.sh`），
 两者互不依赖，见 [`cf-deploy/README.md`](cf-deploy/README.md)。
 
+## 2026-10-02 — 移动端修复与「关于」进阅读器
+
+### 新增
+
+- **顶栏「← 主站」**：从 `/lab/` 一键回到 woo3an.top。顶栏的按钮与链接现在共用同一套排版。
+- **触屏设备首访用「性能」画质**：SSAO（32 次采样）与景深在手机上很贵，持续拖动档案
+  阵列时最容易掉帧。粗指针设备首次访问从 `performance` 预设起步（桌面仍是 `original`），
+  用户动过画质设置后以存档为准。
+
+### 变更
+
+- `docs/READER.md` 的「页面契约」一节跟着更新：独立页面现在也输出可消费的标记。
+
+### 修复
+
+- **「关于」在 `/lab/` 里不再报「不满足阅读契约」**：上游契约只放行
+  `data-reader-kind="post"`，`check-reader` 还明确禁止页面带契约标记。本站要让独立页面
+  也能沉浸阅读，于是放行 `page` 类型 —— `shared/reading/contract.ts` 接受两种 kind；
+  `PostLayout.astro` 给页面输出同一套标记（kind 按实际类型）；`scripts/blog/check-reader.mjs`
+  由「页面不得带标记」改为「页面必须满足契约且 kind 为 page」。
+- **弹窗的关闭按钮不再随内容滚动**：`.modal-top` 改为 sticky 钉在弹窗顶部，容器原本的
+  `padding-top` 移交给它。手机上设置面板很长，滚到中段就够不着 × 了。
+- **手机阅读器的滚动条不再压着正文**：窄屏滚动条是浮层、不占位，正文会一直贴到条子
+  底下。给阅读栏留出 14px 右侧空隙（只在紧凑/竖屏布局生效，桌面版心不受影响）。
+- **音乐开关读错了键**：`prefs.music` 原本取的是 `storedPrefs.sound`，存档里缺 `music`
+  键时会把音效的开关当成音乐的。已改为读 `storedPrefs.music`。
+
+### 注意
+
+- `.terminal-modal` 与 `.reader-sheet`、`.modal-top` 与 `.reader-toolbar` 是**成对复用**的
+  类名（`sheet.className = "terminal-modal reader-sheet"`、`toolbar.className =
+  "reader-toolbar modal-top"`）。改动其中一条规则时必须排除另一侧，否则阅读器会跟着变。
+
 ## 2026-10-02 — 发布流程自动化
 
 写作端继续用 Hexo 格式（Obsidian 的 `Blog/_posts`），导入由脚本完成，不再手工搬。

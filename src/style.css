@@ -362,7 +362,8 @@ button {
   pointer-events: none;
   transition: opacity 0.8s;
 }
-.system-nav button {
+/* 顶栏既有按钮也有链接（「← 主站」），两者排版一致。 */
+.system-nav :is(button, a) {
   font-size: 14px;
   line-height: 1;
   min-height: 28px;
@@ -370,8 +371,10 @@ button {
   display: flex;
   align-items: center;
   gap: 12px;
+  color: inherit;
+  text-decoration: none;
 }
-.system-nav button:hover {
+.system-nav :is(button, a):hover {
   color: #9b7247;
 }
 .nav-glyph {
@@ -970,7 +973,9 @@ button {
   box-shadow: 0 26px 95px #63513a20;
   border: 1px solid #f7f5ee;
   position: relative;
-  padding: 35px 53px;
+  /* 上方留白交给 .modal-top：它是 sticky 的，容器自己带 padding-top 会让
+     滚动内容从固定栏上方漏出来。 */
+  padding: 0 53px 35px;
 }
 .modal-top {
   display: flex;
@@ -980,6 +985,17 @@ button {
   letter-spacing: 1px;
   border-bottom: 1px solid #c2bdb1;
   padding-bottom: 20px;
+}
+/* 顶栏钉在弹窗顶部：面板内容再长也够得着关闭按钮。
+   阅读器的工具栏也挂着 .modal-top（复用排版），但它待在不滚动的 sheet 里，
+   所以这里把它排除掉——否则会白得一层背景和上内边距。 */
+.terminal-modal > .modal-top:not(.reader-toolbar) {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  /* 不透明背景盖住滚上来的内容；取值同 .terminal-modal 的底色。 */
+  background: #edeae4;
+  padding-top: 35px;
 }
 .modal-top button {
   font-size: 10px;

@@ -90,6 +90,9 @@ export async function checkReader({ dist = distDir, posts, pages, published, hid
       continue;
     }
     const { contract } = result;
+    if (contract.kind !== "post") {
+      errors.push(`reader：${post.path} 的 data-reader-kind 为 ${contract.kind}，应为 post`);
+    }
     if (contract.postId !== post.id) {
       errors.push(`reader：${post.path} 的 data-post-id 为 ${contract.postId}，应为 ${post.id}`);
     }
@@ -118,8 +121,27 @@ export async function checkReader({ dist = distDir, posts, pages, published, hid
       errors.push(`reader：公开页面缺少页面 ${page.path}`);
       continue;
     }
-    if (hasReaderMarker(await readFile(file, "utf8"))) {
-      errors.push(`reader：页面 ${page.path} 不应带 data-reader-version 标记`);
+    // 上游只放行文章；本站把独立页面（「关于」）也接进沉浸阅读，
+    // 所以页面同样必须满足契约，kind 必须是 page。
+    const html = await readFile(file, "utf8");
+    if (!hasReaderMarker(html)) {
+      errors.push(`reader：页面 ${page.path} 缺少 data-reader-version 标记`);
+      continue;
+    }
+    const result = readArticleContract(html);
+    if (!result.ok) {
+      errors.push(`reader：${page.id} 契约失败（${result.issues.join("；")}）`);
+      continue;
+    }
+    const { contract } = result;
+    if (contract.kind !== "page") {
+      errors.push(`reader：${page.path} 的 data-reader-kind 为 ${contract.kind}，应为 page`);
+    }
+    if (contract.postId !== page.id) {
+      errors.push(`reader：${page.path} 的 data-post-id 为 ${contract.postId}，应为 ${page.id}`);
+    }
+    if (contract.canonicalPath !== page.path) {
+      errors.push(`reader：${page.path} 的 data-canonical-path 为 ${contract.canonicalPath}`);
     }
   }
 

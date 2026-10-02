@@ -54,6 +54,7 @@ $("#stage").innerHTML = `
   <div id="boot-background" class="boot-background"><svg viewBox="0 0 1920 1080" preserveAspectRatio="none"><g fill="none" stroke="#fff" stroke-width="3"><path d="M-210 705C-45 705 182 704 247 567C337 377 99 306 4 435S27 680 169 631C309 584 227 314 279 111S568-113 568-113"/><path d="M1560-80C1374 114 1671 168 1601 323S1371 367 1431 480S1692 666 1559 787S1329 886 1498 1130"/><circle cx="1450" cy="648" r="346"/><circle cx="1450" cy="648" r="348"/></g></svg></div>
   <header class="brand">${brandHeading}</header>
   <nav class="system-nav" aria-label="系统导航">
+    <a class="nav-home" href="/" title="返回主站 woo3an.top">← 主站</a>
     <button data-action="search"><span class="nav-glyph">⌕</span> ARCHIVE INDEX <span class="key">/</span></button>
     <button data-action="saved" aria-label="查看收藏档案" title="收藏档案">＋ SAVED <span id="saved-count">00</span></button>
     <button data-action="settings" aria-label="系统设置" title="系统设置"><span class="settings-glyph">◷</span></button>
@@ -207,13 +208,20 @@ const initialMotion = createMotionPreferences(
 );
 const prefs = {
   sound: true,
-  music: storedPrefs.sound ?? true,
+  // 音乐开关读回自己的键。上游这里读的是 storedPrefs.sound，只有在存档里
+  // 缺 music 键时才会露出成“音效关掉 → 音乐也跟着关”，但那是错的。
+  music: storedPrefs.music ?? true,
   soundVolume: .55,
   musicVolume: .5,
   reduced: matchMedia("(prefers-reduced-motion: reduce)").matches,
   quality: true,
   ...storedPrefs,
-  rendering: normalizeQuality(storedPrefs.rendering, storedPrefs.quality !== false),
+  // 触屏设备首次访问从「性能」起步：SSAO（32 次采样）与景深在手机上很贵，
+  // 拖动阵列时最容易掉帧。桌面仍从「原始」起步。用户动过画质设置后以存档为准。
+  rendering: normalizeQuality(
+    storedPrefs.rendering ?? (matchMedia("(pointer: coarse)").matches ? qualityPresets.performance : undefined),
+    storedPrefs.quality !== false,
+  ),
   colorTheme: storedPrefs.colorTheme ?? "system",
   motion: initialMotion,
   motionPreset: storedPrefs.motionPreset ?? motionPresetFor(initialMotion),

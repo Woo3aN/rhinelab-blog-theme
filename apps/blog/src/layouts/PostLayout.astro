@@ -44,16 +44,12 @@ const jsonLd = JSON.stringify({
 >
   <article
   data-pagefind-body
-  {...kind === "post"
-    ? {
-        "data-reader-version": "1",
-        "data-reader-kind": "post",
-        "data-post-id": data.id,
-        "data-canonical-path": canonical,
-      }
-    : {}}
+  data-reader-version="1"
+  data-reader-kind={kind}
+  data-post-id={data.id}
+  data-canonical-path={canonical}
 >
-  <div data-reader-content={kind === "post" ? true : undefined}>
+  <div data-reader-content>
     <h1 class="page-title">{data.title}</h1>
     <div class="meta">
       <time datetime={data.publishedAt.toISOString()}>发布于 {formatDate(data.publishedAt)}</time>

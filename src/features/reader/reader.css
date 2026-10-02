@@ -284,6 +284,13 @@ dialog.article-reader[data-layout="desktop"] .reader-sheet {
   scroll-padding-top: 12px;
 }
 
+/* 窄屏上滚动条是浮在内容上的（不占位），正文会一直贴到条子底下。
+   给阅读栏留出右侧空隙，让滚动条与文字分开。桌面端滚动条占位、且有 78ch
+   版心，不需要这条，所以只在紧凑与竖屏布局生效。 */
+:is(dialog.article-reader[data-layout="compact"], dialog.article-reader[data-layout="portrait"]) .reader-scroll {
+  padding-right: 14px;
+}
+
 /* ---------------------------------------------------------------------------
    Navigation rail: a hover/focus-expanded table of contents pinned to the right
    edge of the window, over the scroll region. Collapsed it is a ~44px column of

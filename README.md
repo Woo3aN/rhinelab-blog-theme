@@ -4,8 +4,11 @@
 >
 > 相对上游 [JesseLee-CN/rhinelab-blog-theme](https://github.com/JesseLee-CN/rhinelab-blog-theme) 的改动：
 >
-> - **`/lab/` 去掉了登录**：身份门只保留「以访客身份进入」。本站没有账号系统，
->   `services/lab-auth`（Go + SQLite）不部署，代码留着只为方便同步上游。
+> - **`/lab/` 去掉了登录**：身份门只保留「以访客身份进入」，顶栏加了「← 主站」回博客。
+>   本站没有账号系统，`services/lab-auth`（Go + SQLite）不部署，代码留着只为方便同步上游。
+> - **独立页面也能沉浸阅读**：上游的阅读契约只放行文章（`data-reader-kind="post"`，
+>   且校验脚本禁止页面带标记）。本站放行 `page`，所以「关于」在 `/lab/` 里也能打开。
+>   见 [`docs/READER.md`](docs/READER.md) 与 [`CHANGELOG.md`](CHANGELOG.md)。
 > - **内容换成本站**：原博客的 4 篇文章与「关于」页（保留原网址），另加 2 篇新写的，
 >   主题自带示例内容已删除。
 > - **站名与分类换成本站**：站名、作者默认值、页脚；分类用四字标题

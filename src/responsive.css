@@ -41,7 +41,7 @@
 }
 :is([data-layout="compact"], [data-layout="portrait"]) .brand { left: var(--edge); top: var(--top-edge); transform: scale(.48) !important; transform-origin: top left; }
 :is([data-layout="compact"], [data-layout="portrait"]) .system-nav { top: var(--top-edge); right: var(--edge); gap: 18px; }
-:is([data-layout="compact"], [data-layout="portrait"]) .system-nav button { min-height: 44px; min-width: 44px; font-size: 11px; justify-content: center; gap: 7px; }
+:is([data-layout="compact"], [data-layout="portrait"]) .system-nav :is(button, a) { min-height: 44px; min-width: 44px; font-size: 11px; justify-content: center; gap: 7px; }
 :is([data-layout="compact"], [data-layout="portrait"]) :is(.key, .powered, .archive-hint, .hover-label) { display: none; }
 :is([data-layout="compact"], [data-layout="portrait"]) .system-footer { left: var(--edge); right: var(--edge); bottom: var(--bottom-edge); font-size: 8px; gap: 12px; }
 :is([data-layout="compact"], [data-layout="portrait"]) .system-footer > span:nth-child(2) { display: none; }
@@ -119,10 +119,17 @@
    system dialogs (`data-layout` is mirrored onto the reader dialog by
    `article-reader.ts`, since the dialog lives in the top layer, outside #stage). */
 :is([data-layout="compact"], [data-layout="portrait"]) :is(.modal-backdrop, .reader-backdrop) { top: var(--modal-top, 0px); height: var(--modal-height, 100%); bottom: auto; padding: var(--top-edge) var(--edge) var(--bottom-edge); }
-:is([data-layout="compact"], [data-layout="portrait"]) :is(.terminal-modal, .reader-sheet) { width: min(760px, 100%); height: 100%; max-height: 850px; padding: 16px 20px; overflow: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+:is([data-layout="compact"], [data-layout="portrait"]) :is(.terminal-modal, .reader-sheet) { width: min(760px, 100%); height: 100%; max-height: 850px; overflow: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+/* 阅读器的 sheet 也带 .terminal-modal（`terminal-modal reader-sheet`），两条规则
+   要互不重叠：阅读器的留白留在 sheet 上（它的工具栏不滚动），系统弹窗的上方
+   留白交给 sticky 的 .modal-top（见 style.css），容器自己不能再有 padding-top。 */
+:is([data-layout="compact"], [data-layout="portrait"]) .reader-sheet { padding: 16px 20px; }
+:is([data-layout="compact"], [data-layout="portrait"]) .terminal-modal:not(.reader-sheet) { padding: 0 20px 16px; }
 /* The reader scrolls inside its own region, so the window itself must not scroll. */
 :is([data-layout="compact"], [data-layout="portrait"]) .reader-sheet { overflow: hidden; }
 :is([data-layout="compact"], [data-layout="portrait"]) .modal-top { padding-bottom: 8px; font-size: 9px; gap: 12px; }
+/* 阅读器工具栏同样挂 .modal-top，但它的上内边距由 reader.css 定，别在这里加。 */
+:is([data-layout="compact"], [data-layout="portrait"]) .modal-top:not(.reader-toolbar) { padding-top: 16px; }
 :is([data-layout="compact"], [data-layout="portrait"]) :is(.modal-top button, .reader-toolbar button) { min-height: 44px; min-width: 44px; gap: 8px; }
 :is([data-layout="compact"], [data-layout="portrait"]) .terminal-modal h2 { font-size: 25px; margin: 18px 0; flex-wrap: wrap; gap: 8px; }
 :is([data-layout="compact"], [data-layout="portrait"]) .terminal-modal h2 small { font-size: 12px; }

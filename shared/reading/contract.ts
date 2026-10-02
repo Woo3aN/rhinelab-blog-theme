@@ -12,6 +12,13 @@ export type ParentNode = DefaultTreeAdapterMap["parentNode"];
 
 export const READER_VERSION = "1";
 
+/**
+ * 可消费的内容类型。上游只放行 `post`；本站把独立页面（如「关于」）也接进
+ * 沉浸阅读，所以放行 `page`。两者要求完全相同的契约标记与内部结构，
+ * 差别只在 `data-reader-kind` 的取值。
+ */
+export const READER_KINDS = ["post", "page"] as const;
+
 export const READER_ATTRS = {
   version: "data-reader-version",
   kind: "data-reader-kind",
@@ -78,7 +85,9 @@ export function readArticleContract(html: string): ContractResult {
 
   if (article.tagName !== "article") issues.push(`标记不在 article 上（${article.tagName}）`);
   if (version !== READER_VERSION) issues.push(`不支持的契约版本：${version}`);
-  if (kind !== "post") issues.push(`data-reader-kind 不是 post：${kind}`);
+  if (!(READER_KINDS as readonly string[]).includes(kind)) {
+    issues.push(`data-reader-kind 不是 ${READER_KINDS.join(" / ")}：${kind}`);
+  }
   if (!postId) issues.push("缺少 data-post-id");
   if (!canonicalPath.startsWith("/")) issues.push(`data-canonical-path 不是绝对路径：${canonicalPath}`);
 

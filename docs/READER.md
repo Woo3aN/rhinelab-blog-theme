@@ -78,8 +78,12 @@ interface ImmersiveReader {
 
 - 每页**唯一** post 容器、唯一 `data-reader-content`、唯一 `h1` 与 `.prose`；空 `.prose` 合法。
 - `data-reader-version="1"` 是结构契约版本，不是内容修订号；阅读层与 `check:reader` 都会校验它。
-- 目录项**只来自正文已有的标题 id**（`h1`–`h4[id]`），页面 collection 不输出可消费的
-  `data-reader-kind="post"`。
+- `data-reader-kind` 取 `post`（文章）或 `page`（独立页面）。**上游只放行 `post`，本 fork
+  放行 `page`**，这样「关于」这类独立页面也能进 `/lab/` 的沉浸阅读；两者的标记与内部
+  结构要求完全相同，只有 kind 不同。
+- 目录项**只来自正文已有的标题 id**（`h1`–`h4[id]`）。
+- `check:reader` 对公开文章要求 `kind="post"`、对公开页面要求 `kind="page"`，并逐页比对
+  `data-post-id` 与 `data-canonical-path`；未公开内容一律不得出现标记。
 
 ## 3. 窗口与布局
 
@@ -93,7 +97,7 @@ interface ImmersiveReader {
 | 进出 | 进入 300ms `cubic-bezier(.22,1,.36,1)`、退出 200ms `cubic-bezier(.4,0,1,1)`；遮罩透明度 `0↔1`，窗口 `translateY(12px)↔0`（退出落到 `8px`）；中途关闭从当前值接续 |
 | 减少动态效果 | 不创建动画，立即显示/隐藏 |
 | 正文排版 | 桌面 18px、≤900px 为 16px，`line-height: 1.8`；阅读列 `max-width: 78ch` 居中 |
-| 滚动条 | 阅读区 `scrollbar-width: thin`，颜色 `color-mix(in srgb, ink 34%, transparent)`；窗口自身不出现第二条滚动条 |
+| 滚动条 | 阅读区 `scrollbar-width: thin`，颜色 `color-mix(in srgb, ink 34%, transparent)`；窗口自身不出现第二条滚动条；紧凑/竖屏下滚动条是浮层（不占位），阅读栏因此留 14px 右内边距，免得正文贴到条子上 |
 
 实测几何（误差 ≤1px）：1366×768 → 896×594 @ (235,87)；1920×1080 → 1260×836 @ (330,122)；
 2560×1440 → 1680×1115 @ (440,163)；390×844 → 350×816 @ (20,16)；844×390 → 760×362 @ (42,16)。
