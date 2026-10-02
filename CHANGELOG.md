@@ -32,6 +32,17 @@
 
 ### 修复
 
+- **Safari 上音乐起不来**（切回浏览器后没有背景音乐）。两个独立原因：
+  1. iOS 从后台切回时，`AudioContext.resume()` 的 Promise 可能永远不 resolve，
+     原来的 `await Promise.all([this.suspension, resume])` 会把整条激活链卡死 ——
+     之后就再也听不到音乐，而且没有任何报错。现在加了 1.5 秒超时保护
+     （`RESUME_TIMEOUT_MS`），超时按「这次没恢复成功」处理，交给下一次手势重试。
+  2. 旧版 iOS Safari（17 之前）解不了 Ogg Vorbis，三段 `.ogg` 分轨会静默失败。
+     现在探测 `canPlayType('audio/ogg; codecs="vorbis"')`，不支持就退回仓库里
+     已有的 `observatory-preview.mp3` 单轨（已加入 `prepare-assets.mjs` 白名单，
+     否则它根本不会被打包进产物）。
+  另外，音乐没响起来时会明说：需要手势时提示「点按屏幕以恢复背景音乐」；
+  解码失败时在提示条和设置面板里写出原因，而不是静默无声。
 - **切列会让界面“卡住”**：档案刻度（`.file-ticks`）只在启动时按当时那一列生成
   一次，切到档案更少的列时 `files[slot]` 落空，`records[undefined].id` 抛
   TypeError，`updateSelection` 随之中断 —— 表现就是切列之后界面不再更新。

@@ -1294,6 +1294,8 @@ button {
   border-top: 1px solid #c1b8a7;
 }
 .audio-settings { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
+/* 音频起不来时把原因摆出来（旧版 iOS 解不了 Ogg Vorbis 是最常见的一种）。 */
+.audio-error { margin: 14px 0 0; font-size: 12px; line-height: 1.7; color: #9b7247; }
 .settings-list .audio-toggle { padding: 20px 0 12px; border-bottom: 0; }
 .settings-list .audio-toggle span { margin-top: 7px; }
 .settings-list .audio-volume { justify-content: flex-start; gap: 12px; padding: 8px 0 18px; }

@@ -40,6 +40,8 @@ const WHITELIST = [
   "audio/atmosphere.ogg",
   "audio/motif.ogg",
   "audio/pulse.ogg",
+  // 旧版 Safari 解不了 Ogg Vorbis（17 之前），背景音乐退回这首混好的单轨版。
+  "audio/observatory-preview.mp3",
   "licenses/rolling-number.txt",
 ];
 

@@ -27,7 +27,24 @@ export type AudioPreferences = {
   musicVolume: number;
 };
 const STEMS = ["atmosphere", "motif", "pulse"] as const;
+/**
+ * 不支持 Ogg Vorbis 时的单轨降级：仓库里的混好试听版。
+ * 旧版 iOS Safari（17 之前）解不了 Ogg，三段分轨会静默失败，用这首顶替。
+ */
+const FALLBACK_STEM = "observatory-preview";
 const LOOP_SECONDS = 160 / 3;
+/** 运行期探测能否解码 Ogg Vorbis（Safari 长期不支持）。 */
+function supportsOggVorbis(): boolean {
+  if (typeof document === "undefined") return true;
+  const probe = document.createElement("audio");
+  return probe.canPlayType('audio/ogg; codecs="vorbis"') !== "";
+}
+/**
+ * 等待音频设备 resume/suspend 的上限（毫秒）。
+ * iOS Safari 在音频被系统打断后，这两个 Promise 可能永远不 resolve ——
+ * 不加限制会把整条激活链卡死，之后再也听不到音乐，而且没有任何报错。
+ */
+const RESUME_TIMEOUT_MS = 1500;
 const noiseBuffers = new WeakMap<BaseAudioContext, AudioBuffer>();
 const typingBuffers = new WeakMap<
   BaseAudioContext,
@@ -325,6 +342,8 @@ export class TerminalAudio {
   private loading?: Promise<void>;
   private fetching?: Promise<ArrayBuffer[]>;
   private musicData?: ArrayBuffer[];
+  /** 实际会加载的音轨（Ogg 分轨或单轨降级），首次访问时确定。 */
+  private stems?: { name: string; file: string }[];
   private tracks: AudioBufferSourceNode[] = [];
   private voices: ReturnType<typeof synthesizeSound>[] = [];
   private lastSound = new Map<Sound, number>();
@@ -340,6 +359,13 @@ export class TerminalAudio {
   private bootMix = -1;
   private playedKeys = 0;
   private entryPending = false;
+  /**
+   * 回到前台后音乐没能响起来时通知宿主：
+   * - `"gesture"`：iOS 需要一次新的用户手势才能恢复音频（切回 App 不算手势）；
+   * - `"error"`：音频数据本身没加载/解码成功，例如旧版 iOS 解不了 Ogg Vorbis。
+   */
+  onSilent?: (reason: "gesture" | "error", detail: string) => void;
+  private gestureNotified = false;
   constructor() {
     document.addEventListener("pointerdown", this.gesture, { capture: true });
     document.addEventListener("keydown", this.gesture, { capture: true });
@@ -350,6 +376,7 @@ export class TerminalAudio {
   private gesture = () => {
     if (this.entryPending) return;
     this.unlocked = true;
+    this.gestureNotified = false;
     void this.activate();
   };
   holdForEntry() {
@@ -364,22 +391,34 @@ export class TerminalAudio {
   async unlock() {
     this.unlocked = true;
     await this.activate();
+    // 首次进入（以及每次从后台回来）都在这里兜一次底：音乐没响就说清原因，
+    // 而不是让用户以为「这个站没有声音」。
+    this.reportIfSilent();
     return this.context?.state === "running" && (!this.prefs.music || Boolean(this.buffers));
   }
   // Fetch compressed tracks while the entry screen is visible; create/resume
   // the audio device only from a real click or keyboard activation.
   prepareMusic() {
     if (this.musicData) return Promise.resolve(this.musicData);
-    this.fetching ??= Promise.all(STEMS.map(async name => {
+    this.fetching ??= Promise.all(this.stemFiles.map(async ({ name, file }) => {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 15000);
       try {
-        const response = await fetch(assetUrl(`audio/${name}.ogg`), { signal: controller.signal });
+        const response = await fetch(assetUrl(`audio/${file}`), { signal: controller.signal });
         if (!response.ok) throw new Error(`Music ${name}: ${response.status}`);
         return await response.arrayBuffer();
       } finally { clearTimeout(timeout); }
     })).then(data => this.musicData = data).finally(() => { this.fetching = undefined; });
     return this.fetching;
+  }
+  /**
+   * 本机实际会加载的音轨。Ogg Vorbis 能用就加载三段分轨（可以按场景调比例），
+   * 否则退回单个混音轨 —— 否则旧 Safari 上一声不响而且看不出原因。
+   */
+  private get stemFiles(): { name: string; file: string }[] {
+    return this.stems ??= (supportsOggVorbis()
+      ? STEMS.map((name) => ({ name, file: `${name}.ogg` }))
+      : [{ name: FALLBACK_STEM, file: `${FALLBACK_STEM}.mp3` }]);
   }
   restartBoot() {
     this.stopEffects();
@@ -395,9 +434,31 @@ export class TerminalAudio {
   };
   private visibility = () => {
     this.bootTime = null;
-    if (document.hidden) this.hide();
-    else if (this.unlocked && !this.entryPending) void this.activate();
+    if (document.hidden) {
+      this.hide();
+      return;
+    }
+    if (!this.unlocked || this.entryPending) return;
+    void this.activate().then(() => this.reportIfSilent());
   };
+  /**
+   * 回到前台后音乐该响却没响起来。iOS 上这几乎总是因为系统要求一次新的用户
+   * 手势（切回 App 不算），此时 `gesture` 里的激活要等用户碰一下屏幕才发生。
+   * 只提示一次，用户一碰就会触发 `gesture` 并把提示状态清掉。
+   */
+  private reportIfSilent() {
+    if (this.gestureNotified || this.disposed || document.hidden) return;
+    if (!this.prefs.music || this.tracks.length) return;
+    if (this.error) {
+      // 数据没加载/解码成功：提示「点一下屏幕」也没用，把原因说出来。
+      this.gestureNotified = true;
+      this.onSilent?.("error", this.error);
+      return;
+    }
+    if (this.context?.state === "running") return;
+    this.gestureNotified = true;
+    this.onSilent?.("gesture", "");
+  }
   configure(prefs: AudioPreferences) {
     this.prefs = {
       sound: !!prefs.sound,
@@ -443,7 +504,7 @@ export class TerminalAudio {
     this.duck.connect(master);
     master.connect(limiter);
     limiter.connect(c.destination);
-    this.stemGains = STEMS.map(() => {
+    this.stemGains = this.stemFiles.map(() => {
       const gain = c.createGain();
       gain.gain.value = 0;
       gain.connect(this.musicBus!);
@@ -466,7 +527,12 @@ export class TerminalAudio {
       // Call resume before awaiting network or an earlier suspension so the
       // browser observes this call in the user's activation handler.
       const resume = c.state === "running" ? Promise.resolve() : c.resume();
-      await Promise.all([this.suspension, resume]);
+      // 超时保护见 RESUME_TIMEOUT_MS 的说明：宁可当作「这次没恢复成功」，
+      // 也不能让 activation 链挂在一个永不 resolve 的 Promise 上。
+      await Promise.race([
+        Promise.all([this.suspension, resume]),
+        new Promise<void>((done) => { setTimeout(done, RESUME_TIMEOUT_MS); }),
+      ]);
       if (id !== this.requestId || this.disposed || document.hidden) return;
       if (c.state !== "running") return;
       if (id !== this.requestId || document.hidden || this.disposed) return;
@@ -558,15 +624,23 @@ export class TerminalAudio {
   }
   private mixScene() {
     if (!this.context) return;
-    const gains = {
+    const table = {
       boot: [0.48, 0.32, 0.18],
       archive: [0.9, 0.72, 0.65],
       detail: [0.72, 0.36, 0.12],
       viewer: [0.8, 0.24, 0.28],
     }[this.scene];
+    const gains = this.sceneLevels(table);
     this.stemGains.forEach((g, i) =>
-      level(g.gain, gains[i], this.context!.currentTime, 1.1),
+      level(g.gain, gains[i] ?? 0, this.context!.currentTime, 1.1),
     );
+  }
+  /**
+   * 单轨降级（旧 Safari 解不了 Ogg）时没有声部可配比，把该场景的配比压成
+   * 一个总音量——取最响的那一轨，保持各场景之间的相对响度。
+   */
+  private sceneLevels(table: readonly number[]): number[] {
+    return this.stemGains.length === 1 ? [Math.max(...table)] : [...table];
   }
   play(type: Sound = "tick", pan = 0) {
     const c = this.context;
@@ -607,14 +681,14 @@ export class TerminalAudio {
     const phase = time < 22.76 ? 0 : time < 26.92 ? 1 : time < 34.3 ? 2 : 3;
     if (phase !== this.bootMix && this.context) {
       this.bootMix = phase;
-      const gains = [
+      const gains = this.sceneLevels([
         [0.48, 0.32, 0.18],
         [0.68, 0.55, 0.32],
         [0.9, 0.72, 0.65],
         [0.72, 0.36, 0.12],
-      ][phase];
+      ][phase]);
       this.stemGains.forEach((g, i) =>
-        level(g.gain, gains[i], this.context!.currentTime, 0.9),
+        level(g.gain, gains[i] ?? 0, this.context!.currentTime, 0.9),
       );
     }
     if (
