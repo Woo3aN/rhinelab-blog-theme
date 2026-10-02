@@ -32,6 +32,12 @@
 
 ### 修复
 
+- **切列会让界面“卡住”**：档案刻度（`.file-ticks`）只在启动时按当时那一列生成
+  一次，切到档案更少的列时 `files[slot]` 落空，`records[undefined].id` 抛
+  TypeError，`updateSelection` 随之中断 —— 表现就是切列之后界面不再更新。
+  现在刻度按当前列重建（点击走 document 上的委托，重建 innerHTML 不丢事件）。
+  上一次把「其他」列从第一位挪到最后时，初始列从 1 篇变成 3 篇，正好把这个
+  潜伏的问题放大了。
 - **「关于」在 `/lab/` 里不再报「不满足阅读契约」**：上游契约只放行
   `data-reader-kind="post"`，`check-reader` 还明确禁止页面带契约标记。本站要让独立页面
   也能沉浸阅读，于是放行 `page` 类型 —— `shared/reading/contract.ts` 接受两种 kind；

@@ -422,7 +422,7 @@ $("#file-ticks").innerHTML = columnFiles(fileLocation(selected).lane)
     (index) => `<button data-select="${index}"></button>`,
   )
   .join("");
-const fileTicks = [...$("#file-ticks").querySelectorAll<HTMLButtonElement>("button")];
+// 刻度按钮不在这里缓存：列一换数量就变，updateSelection 里按当前列重建。
 
 function setMode(next: Mode) {
   const previousMode = mode;
@@ -532,8 +532,17 @@ function updateSelection(navigation?: ArchiveNavigation) {
   columnTitle.update({ text: archiveColumns[lane], animated: motionActive("rollingText") && mode === "archive" });
   $<HTMLButtonElement>('[data-action="column-prev"]').disabled = false;
   $<HTMLButtonElement>('[data-action="column-next"]').disabled = false;
-  fileTicks.forEach((button, slot) => {
+  // 刻度按当前列重建：各列的档案数不同，按钮数量必须跟着变。以前只在启动时
+  // 生成一次，切到档案更少的列时 `files[slot]` 落空，`records[undefined].id`
+  // 直接抛 TypeError，updateSelection 随之中断——界面看着就像“卡住”。
+  // 点击走 document 上的委托（见 dataset.select），重建 innerHTML 不会丢事件。
+  const tickHost = $("#file-ticks");
+  if (tickHost.childElementCount !== files.length) {
+    tickHost.innerHTML = files.map((index) => `<button data-select="${index}"></button>`).join("");
+  }
+  [...tickHost.querySelectorAll<HTMLButtonElement>("button")].forEach((button, slot) => {
     const index = files[slot], record = records[index];
+    if (!record) return;
     button.dataset.select = String(index);
     button.setAttribute("aria-label", `选择档案 ${record.id} ${record.title}`);
     button.title = `${record.id} · ${record.title}`;
