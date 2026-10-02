@@ -17,7 +17,16 @@ const require = createRequire(new URL("../", import.meta.url));
 const { load: parseYaml } = require("js-yaml");
 
 const ROOT = resolve(new URL("../", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1"));
-// 写作端目录不写死（公开仓库不该带本机路径）：由 POSTS_SRC 传入。
+
+// 写作端目录：POSTS_SRC 环境变量 → cf-deploy/.env.local（本机专用，不入库）
+// → 都没有就报错。公开仓库里不写死个人目录。
+if (!process.env.POSTS_SRC) {
+  const envLocal = resolve(ROOT, "cf-deploy/.env.local");
+  if (existsSync(envLocal)) {
+    const hit = /^POSTS_SRC=(.+)$/m.exec(readFileSync(envLocal, "utf8"));
+    if (hit) process.env.POSTS_SRC = hit[1].trim().replace(/^["']|["']$/g, "");
+  }
+}
 const SRC = process.env.POSTS_SRC || "";
 const POSTS_DIR = resolve(ROOT, "content/posts");
 const PAGES_DIR = resolve(ROOT, "content/pages");

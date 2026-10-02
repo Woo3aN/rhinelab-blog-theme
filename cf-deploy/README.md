@@ -54,9 +54,10 @@ push，在 GitHub 的机器上跑一遍构建再上传。两条路都能上线�
 用的是 GitHub Actions 而不是 Cloudflare 自带的 Git 集成，因为后者需要在
 Cloudflare 后台做 GitHub OAuth 授权（只能本人操作），而 Actions 只要一个 Token。
 
-`publish.sh` 会先跑 `import-posts.mjs`：从写作端（默认 Obsidian 的
-`Blog/_posts`，可用 `POSTS_SRC=<目录>` 覆盖）导入没导入过的文章，自动分配 id
+`publish.sh` 会先跑 `import-posts.mjs`：从写作端导入没导入过的文章，自动分配 id
 （取现有最大的 `wp-<数字>` 顺延）、沿用 `/年/月/日/标题/` 网址。
+写作端目录用 `POSTS_SRC=<目录>` 指定，或写进本机 `cf-deploy/.env.local`
+（一行 `POSTS_SRC=...`，不入库）省得每次手输。
 
 **摘要需要自己写**：脚本只从正文首段草拟一句并打上 `# 摘要待润色` 标记。
 主题强制要求 `description` 非空、≤300 字，它出现在首页列表、搜索结果、RSS
