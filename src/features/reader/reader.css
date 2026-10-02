@@ -273,7 +273,7 @@ dialog.article-reader[data-layout="desktop"] .reader-sheet {
 /* 触摸设备上不画这个方框：它紧贴工具栏右边界，任何偏移都可能被
    `overflow: hidden` 裁掉一角（Safari 对负 offset 的处理与 Chrome 不同，
    实测仍会出界），而触摸用户不需要键盘焦点提示。 */
-@media (pointer: coarse) {
+@media (pointer: coarse), (hover: none) {
   .article-reader .reader-close:focus-visible {
     outline: none;
   }

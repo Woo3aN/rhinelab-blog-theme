@@ -1012,8 +1012,10 @@ button {
 }
 /* 触摸设备上干脆不画这个方框：焦点环紧贴面板右边界，任何偏移都可能被容器裁掉
    一角（Safari 对负 outline-offset 的处理与 Chrome 不同，实测仍会出界），
-   而触摸用户本来也不需要键盘焦点提示。键盘用户（桌面）保留上面的焦点环。 */
-@media (pointer: coarse) {
+   而触摸用户本来也不需要键盘焦点提示。键盘用户（桌面）保留上面的焦点环。
+   两个条件取并集：coarse 覆盖手机，hover: none 覆盖带触控板但无鼠标的设备
+   （本项目判断触摸设备用的就是 (pointer: coarse)，见 src/viewport-layout.ts）。 */
+@media (pointer: coarse), (hover: none) {
   .terminal-modal .modal-top button:focus-visible {
     outline: none;
   }
