@@ -117,7 +117,9 @@ if (collections) {
         tags: post.tags ?? [],
         clearance: "PUBLIC",
         abstract: post.description,
-        findings: [post.description],
+        // 「研究记录」优先用文章自己写的条目；没写才退化成摘要一条
+        // （那样「概述」和「研究记录」两个标签的内容会重复）。
+        findings: post.findings?.length ? post.findings : [post.description],
         source: new URL(post.path, SITE).href,
         href: post.path,
       });

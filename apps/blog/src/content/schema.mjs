@@ -71,6 +71,14 @@ const baseFields = {
   draft: z.boolean().default(false),
   categories: z.array(z.string().trim().min(1)).default([]),
   tags: z.array(z.string().trim().min(1)).default([]),
+  /**
+   * 三维档案里「研究记录」标签页的条目（每条一句话，界面会自动编号）。
+   * 不写就回退成用 description 顶一条，但那样两个标签内容会一模一样。
+   */
+  findings: z
+    .array(z.string().trim().min(1, "研究记录条目不能为空"))
+    .max(6, "研究记录最多 6 条")
+    .default([]),
   author: z.string().trim().min(1).default("Woo3aN"),
   cover: z.string().optional(),
   legacyUrls: z.array(legacyUrl).default([]),

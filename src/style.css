@@ -1010,6 +1010,14 @@ button {
 .terminal-modal .modal-top button:focus-visible {
   outline-offset: -2px;
 }
+/* 触摸设备上干脆不画这个方框：焦点环紧贴面板右边界，任何偏移都可能被容器裁掉
+   一角（Safari 对负 outline-offset 的处理与 Chrome 不同，实测仍会出界），
+   而触摸用户本来也不需要键盘焦点提示。键盘用户（桌面）保留上面的焦点环。 */
+@media (pointer: coarse) {
+  .terminal-modal .modal-top button:focus-visible {
+    outline: none;
+  }
+}
 .modal-top button > span {
   position: relative;
   flex: 0 0 16px;
