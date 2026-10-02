@@ -1004,6 +1004,12 @@ button {
   align-items: center;
   line-height: 1;
 }
+/* 关闭按钮贴着面板右边界。全局的 `button:focus-visible` 用 7px offset，焦点环
+   会越出约 9px，被 .terminal-modal 的 overflow 裁掉右边——看上去就是「× 外面套
+   一个缺口的方框」。改成向内画：仍然看得见焦点，又不会越界。 */
+.terminal-modal .modal-top button:focus-visible {
+  outline-offset: -2px;
+}
 .modal-top button > span {
   position: relative;
   flex: 0 0 16px;

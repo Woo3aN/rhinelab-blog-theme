@@ -49,6 +49,11 @@
   底下。给阅读栏留出 14px 右侧空隙（只在紧凑/竖屏布局生效，桌面版心不受影响）。
 - **音乐开关读错了键**：`prefs.music` 原本取的是 `storedPrefs.sound`，存档里缺 `music`
   键时会把音效的开关当成音乐的。已改为读 `storedPrefs.music`。
+- **关闭按钮的焦点方框被裁**：关闭按钮贴着面板右边界，全局 `button:focus-visible`
+  用 7px 的 `outline-offset`，焦点环会越出约 9px，被容器的 overflow 裁掉右边 ——
+  手机上表现为「× 外面套着一个缺口的方框」。阅读器的关闭按钮同理（2px offset
+  越出 4px，被 `.reader-toolbar` 的 `overflow: hidden` 裁）。两处都改为向内画
+  （`outline-offset: -2px`）：焦点提示仍然可见，但不再越界。
 
 ### 注意
 
