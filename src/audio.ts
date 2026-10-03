@@ -66,6 +66,14 @@ function describeAudioError(error: unknown): string {
  * 不加限制会把整条激活链卡死，之后再也听不到音乐，而且没有任何报错。
  */
 const RESUME_TIMEOUT_MS = 1500;
+/**
+ * iOS 会把 AudioContext 丢进「`state` 还是 running、时钟却不再推进」的僵尸态
+ * （WebKit bug 276016 / 283419），此时唯一能唤醒它的是 suspend → resume。
+ * 探针窗口要够长，才分得清「刚起步还没走起来」和「真的停了」。
+ */
+const CLOCK_PROBE_MS = 420;
+const CLOCK_STALL_EPSILON = 0.02;
+const REVIVE_GAP_MS = 250;
 const noiseBuffers = new WeakMap<BaseAudioContext, AudioBuffer>();
 const typingBuffers = new WeakMap<
   BaseAudioContext,
@@ -383,6 +391,7 @@ export class TerminalAudio {
   private errorRetryable = false;
   private requestId = 0;
   private suspension: Promise<void> = Promise.resolve();
+  private probe?: ReturnType<typeof setTimeout>;
   private bootMix = -1;
   private playedKeys = 0;
   private entryPending = false;
@@ -463,6 +472,7 @@ export class TerminalAudio {
   }
   private hide = () => {
     this.requestId++;
+    clearTimeout(this.probe);
     this.stopMusic();
     this.stopEffects();
     // 只需要「别在挂起完成前 resume」，而不是「必须等它完成」：iOS 上
@@ -583,6 +593,9 @@ export class TerminalAudio {
       if (id !== this.requestId || this.disposed || document.hidden) return;
       if (c.state !== "running") return;
       if (id !== this.requestId || document.hidden || this.disposed) return;
+      // 探针挂在这里而不是末尾：设备活没活着和音乐能不能解码无关，
+      // 解码失败时音效照样会哑。
+      this.armLivenessProbe(c, id);
       if (this.prefs.music) {
         await this.loadMusic(c);
         if (id === this.requestId) this.startMusic();
@@ -592,6 +605,56 @@ export class TerminalAudio {
       this.errorRetryable = isRetryableAudioFailure(e);
       console.warn("[audio] 激活失败：", e);
     }
+  }
+  /**
+   * `state` 说 running 不代表设备真的在跑：iOS 会把它留在「时钟已经停住、
+   * 状态却没变」的僵尸态（WebKit bug 276016 / 283419），而 activate() 里
+   * 「running 就不用 resume」的短路恰好让设备永远起不来。表现就是「刚进来
+   * 没声音，切到别的标签页再回来反而有了」—— 切走时 hide() 真 suspend 了
+   * 一次，回来才走到 resume 那条路。
+   *
+   * 设备在不在跑只能看时钟走不走。探针只在时钟确实停住时才动手，正常路径
+   * 没有任何额外开销。
+   */
+  private armLivenessProbe(c: AudioContext, id: number) {
+    clearTimeout(this.probe);
+    const started = c.currentTime;
+    this.probe = setTimeout(() => {
+      if (this.disposed || document.hidden || id !== this.requestId) return;
+      if (c.state !== "running") return;
+      if (c.currentTime - started > CLOCK_STALL_EPSILON) return;
+      void this.revive(c, id);
+    }, CLOCK_PROBE_MS);
+  }
+  /** 僵尸态的唯一解法：suspend 一次再 resume（WebKit bug 上验证过的办法）。 */
+  private async revive(c: AudioContext, id: number) {
+    const wait = (ms: number) =>
+      new Promise<void>((done) => { setTimeout(done, ms); });
+    try {
+      // 同 hide()：iOS 上 suspend()/resume() 的 Promise 都可能永远不 resolve，
+      // 两个都要上期限，否则复活流程自己先挂住。
+      const suspended = Promise.race([c.suspend().catch(() => {}), wait(REVIVE_GAP_MS)]);
+      this.suspension = suspended;
+      await suspended;
+      await wait(REVIVE_GAP_MS);
+      await Promise.race([c.resume().catch(() => {}), wait(RESUME_TIMEOUT_MS)]);
+    } catch (e) {
+      this.error = describeAudioError(e);
+      this.errorRetryable = isRetryableAudioFailure(e);
+      console.warn("[audio] 恢复音频设备失败：", e);
+      return;
+    }
+    if (id !== this.requestId || this.disposed || document.hidden) return;
+    if (c.state !== "running") {
+      // 连 suspend → resume 都没能把它叫醒：只能等一次新的用户手势了。
+      // （reportIfSilent 在这里帮不上忙：僵尸态的 state 恰恰是 running。）
+      if (!this.gestureNotified) {
+        this.gestureNotified = true;
+        this.onSilent?.("gesture", "");
+      }
+      return;
+    }
+    if (this.prefs.music) this.startMusic();
   }
   /** 丢掉失效的音频设备，重建一套增益节点。 */
   private rebuildContext(): AudioContext {
@@ -815,6 +878,7 @@ export class TerminalAudio {
   dispose() {
     this.disposed = true;
     this.requestId++;
+    clearTimeout(this.probe);
     this.stopMusic();
     this.stopEffects();
     document.removeEventListener("pointerdown", this.gesture, true);
