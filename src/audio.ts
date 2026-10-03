@@ -74,6 +74,8 @@ const RESUME_TIMEOUT_MS = 1500;
 const CLOCK_PROBE_MS = 420;
 const CLOCK_STALL_EPSILON = 0.02;
 const REVIVE_GAP_MS = 250;
+/** 没有 `navigator.userActivation` 时，用它判断"刚才那次点击还算不算数"。 */
+const GESTURE_WINDOW_MS = 1000;
 const noiseBuffers = new WeakMap<BaseAudioContext, AudioBuffer>();
 const typingBuffers = new WeakMap<
   BaseAudioContext,
@@ -392,6 +394,9 @@ export class TerminalAudio {
   private requestId = 0;
   private suspension: Promise<void> = Promise.resolve();
   private probe?: ReturnType<typeof setTimeout>;
+  private gestureAt = 0;
+  /** 设备已经趁手势窗口「踢」过一脚了吗（见 activate 里的说明）。 */
+  private deviceKicked = false;
   private bootMix = -1;
   private playedKeys = 0;
   private entryPending = false;
@@ -410,6 +415,7 @@ export class TerminalAudio {
     window.addEventListener("pageshow", this.visibility);
   }
   private gesture = () => {
+    this.gestureAt = performance.now();
     if (this.entryPending) return;
     this.unlocked = true;
     this.gestureNotified = false;
@@ -593,6 +599,17 @@ export class TerminalAudio {
       if (id !== this.requestId || this.disposed || document.hidden) return;
       if (c.state !== "running") return;
       if (id !== this.requestId || document.hidden || this.disposed) return;
+      // iOS 上「全新设备」的第一次 resume 常常只把 state 改成 running，设备
+      // 并没有真的开起来（WebKit bug 276016）；而僵尸态的 state 恰好就是
+      // running，单叫一次 resume() 等于 no-op —— 必须先 suspend() 再 resume()。
+      // 这一对调用只有在用户手势的窗口里才被 iOS 采纳，所以趁进门那一次点击
+      // 做一遍（顺序连着调，靠 WebKit 自己排队，不 await：iOS 上 suspend 的
+      // Promise 可能永远不 resolve）。只做一次，之后交给时钟探针兜底。
+      if (!this.deviceKicked && this.inGestureWindow()) {
+        this.deviceKicked = true;
+        void c.suspend().catch(() => {});
+        void c.resume().catch(() => {});
+      }
       // 探针挂在这里而不是末尾：设备活没活着和音乐能不能解码无关，
       // 解码失败时音效照样会哑。
       this.armLivenessProbe(c, id);
@@ -605,6 +622,15 @@ export class TerminalAudio {
       this.errorRetryable = isRetryableAudioFailure(e);
       console.warn("[audio] 激活失败：", e);
     }
+  }
+  /**
+   * 现在还在用户手势的窗口里吗。`navigator.userActivation` 是标准接口，新
+   * Safari 都有；老一点的浏览器上退回「最近一秒内有过 pointerdown/keydown」。
+   */
+  private inGestureWindow(): boolean {
+    const activation = navigator.userActivation as UserActivation | undefined;
+    if (activation?.isActive) return true;
+    return performance.now() - this.gestureAt < GESTURE_WINDOW_MS;
   }
   /**
    * `state` 说 running 不代表设备真的在跑：iOS 会把它留在「时钟已经停住、
@@ -621,7 +647,15 @@ export class TerminalAudio {
     const started = c.currentTime;
     this.probe = setTimeout(() => {
       if (this.disposed || document.hidden || id !== this.requestId) return;
-      if (c.state !== "running") return;
+      if (c.state !== "running") {
+        // 到点还没跑起来（设备被系统收走、或上面那一脚没踢动）：直接告诉用户
+        // 碰一下屏幕，别让人对着无声的页面猜。
+        if (!this.gestureNotified) {
+          this.gestureNotified = true;
+          this.onSilent?.("gesture", "");
+        }
+        return;
+      }
       if (c.currentTime - started > CLOCK_STALL_EPSILON) return;
       void this.revive(c, id);
     }, CLOCK_PROBE_MS);
